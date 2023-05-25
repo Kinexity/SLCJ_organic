@@ -1,0 +1,8 @@
+ # Initialize run
+ /run/initialize
+ /gun/particle geantino
+ /gun/direction 0. 0. 1
+ /gun/position 0. 0. 0.
+ /tracking/verbose 1
+ /run/beamOn 1000000
+

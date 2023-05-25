@@ -1,0 +1,6 @@
+Gas1,Gas2,Gas3(0=null,1=CF4,2=Ar,3=He,4=N2)
+1 2 3
+GasFrac1[%],GasFrac2[%],GasFrac3[%]
+2 48 50 
+T[k],P[kPa],E[V/cm]
+297 99.8 300

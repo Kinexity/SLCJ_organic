@@ -1,0 +1,39 @@
+# Visualization and execution macro
+#    /control/execute vis.mac
+#
+# Initialize run
+#/run/initialize
+
+# Visualization commands
+/vis/scene/create
+
+#/vis/open DAWNFILE
+/vis/open VRML2FILE
+
+
+/vis/viewer/reset
+/vis/viewer/set/style w
+#/vis/viewer/set/viewpointThetaPhi 0 90
+/vis/viewer/set/viewpointThetaPhi 75 270
+#/vis/viewer/set/viewpointThetaPhi 40 40
+#/vis/viewer/zoom 2
+
+#/vis/scene/add/axes 0 0 0 0.1
+/vis/scene/add/volume
+
+# Uncomment these for viewing trancks
+####################################
+#/tracking/storeTrajectory 1
+#/vis/scene/add/trajectories
+#/vis/scene/endOfEventAction accumulate
+
+## Particle type and energy
+#/gun/particle gamma
+#/gun/energy 1.0 MeV
+
+## Number of events to run
+#/run/beamOn 1
+###################################
+
+# Refresh view
+#/vis/viewer/flush
