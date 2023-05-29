@@ -14,6 +14,7 @@ if(WITH_GEANT4_UIVIS)
 else()
   find_package(Geant4 REQUIRED)
 endif()
+find_package(Boost)
 
 #----------------------------------------------------------------------------
 # Setup Geant4 include directories and compile definitions
@@ -21,6 +22,7 @@ endif()
 #
 include(${Geant4_USE_FILE})
 include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${Boost_INCLUDE_DIRS})  # Include Boost headers
 
 #----------------------------------------------------------------------------
 # Locate sources and headers for this project
@@ -30,12 +32,12 @@ file(GLOB sources ${PROJECT_SOURCE_DIR}/src/*.cc)
 file(GLOB headers ${PROJECT_SOURCE_DIR}/include/*.hh)
 
 #----------------------------------------------------------------------------
-# Add the executable, and link it to the Geant4 libraries
+# Add the executable, and link it to the Geant4 and Boost libraries
 #
-add_executable(SLCJ SLCJ.cc ${sources} ${headers})
-target_link_libraries(SLCJ ${Geant4_LIBRARIES})
-add_executable(SLCJ_manual SLCJ_manual.cc ${sources} ${headers})
-target_link_libraries(SLCJ_manual ${Geant4_LIBRARIES})
+add_executable(SLCJ SLCJ.cc ${sources} ${headers} "src/geometry.cpp")
+target_link_libraries(SLCJ ${Geant4_LIBRARIES} ${Boost_LIBRARIES})  # Link Boost library
+add_executable(SLCJ_manual SLCJ_manual.cc ${sources} ${headers} "src/geometry.cpp")
+target_link_libraries(SLCJ_manual ${Geant4_LIBRARIES} ${Boost_LIBRARIES})  # Link Boost library
 
 
 

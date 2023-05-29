@@ -32,12 +32,18 @@
 #include "G4VisAttributes.hh"
 #include "G4PhysicalVolumeStore.hh"
 #include "G4NistManager.hh"
+#include "G4RayTracer.hh"
 #include <fstream>
 #include <format>
 #include <map>
 #include <tuple>
 #include <set>
+#include <algorithm>
+#include <numeric>
+#include <execution>
+#include <boost/math/tools/roots.hpp>
 
+#include "G4IntersectionSolid.hh"
 #include "G4IntersectionSolid.hh"
 #include "G4SubtractionSolid.hh"
 #include "G4TessellatedSolid.hh"
@@ -46,6 +52,7 @@
 #include <G4UnionSolid.hh>
 //#include "TMath.h"
 #include "G4Polycone.hh"
+#include "geometry.h"
 
 #include "F02ElectricFieldSetup.hh"
 
@@ -58,260 +65,6 @@ inline std::string filename_string(std::string path_str) {
 
 #define _endl_ " (" << filename_string(__FILE__) << "; " << __LINE__ << ")" << '\n'
 #define checkpoint std::cout << "checkpoint" << _endl_
-
-const double tolerance = 1e-8;
-
-// check if facets share a vertex
-bool shareVertex(const G4TriangularFacet* facet1, const G4TriangularFacet* facet2) {
-	// Check each vertex of facet1
-	for (int i = 0; i < 3; ++i) {
-		G4ThreeVector vertex1 = facet1->GetVertex(i);
-
-		// Check each vertex of facet2
-		for (int j = 0; j < 3; ++j) {
-			G4ThreeVector vertex2 = facet2->GetVertex(j);
-
-			if (vertex1 == vertex2) {
-				// Found a shared vertex
-				return true;
-			}
-		}
-	}
-
-	// No shared vertex found
-	return false;
-}
-
-// function checking if two G4TriangularFacet objects are in the same plane
-bool areFacetsInSamePlane(const G4TriangularFacet* facet1, const G4TriangularFacet* facet2) {
-	// Compute the normal vectors of the planes defined by the facets
-	G4ThreeVector normal1 = facet1->GetSurfaceNormal().unit();
-	G4ThreeVector normal2 = facet2->GetSurfaceNormal().unit();
-
-	// Check if the normal vectors are parallel (within a tolerance)
-	G4double dotProduct = std::abs(normal1.dot(normal2));
-	G4double planeDistance1 = std::abs(facet1->GetCircumcentre() * normal1); // distance of facet's plane from the point (0,0,0)
-	G4double planeDistance2 = std::abs(facet2->GetCircumcentre() * normal2); // distance of facet's plane from the point (0,0,0)
-	return std::abs(dotProduct - 1.0) < tolerance && std::abs(planeDistance1 - planeDistance2) < tolerance; // Adjust tolerance as needed
-}
-
-// find intersection distance between line and facet's plane
-G4double findIntersectionDistance(const G4ThreeVector startPoint, const G4ThreeVector direction, const G4TriangularFacet* facet) {
-	G4ThreeVector normal = facet->GetSurfaceNormal().unit();
-	G4ThreeVector vertex = facet->GetVertex(0);
-
-	G4double dotProduct = normal.dot(direction);
-
-	G4double distance = (vertex - startPoint).dot(normal) / dotProduct;
-	return distance;
-}
-
-// generate vectors 
-std::vector<std::pair<G4ThreeVector, G4ThreeVector>> generateVertexVectorPairs(const G4TriangularFacet* facet) {
-	std::vector<std::pair<G4ThreeVector, G4ThreeVector>> vertexPairs;
-	std::vector<G4ThreeVector> vertices, pointVectors;
-
-	// get vertices
-	auto numberOfVertices = facet->GetNumberOfVertices();
-	for (int vertexIndex = 0; vertexIndex < numberOfVertices; vertexIndex++) {
-		auto vertex = facet->GetVertex(vertexIndex);
-		vertices.push_back(vertex);
-	}
-
-	//calculate middle points, middle point vectors and edge vectors
-	for (int vertexIndex = 0; vertexIndex < numberOfVertices; vertexIndex++) {
-		auto middlePoint = (vertices[(vertexIndex + 2) % numberOfVertices] + vertices[(vertexIndex + 1) % numberOfVertices]) / 2; // middle point
-		vertexPairs.emplace_back(vertices[vertexIndex], middlePoint - vertices[vertexIndex]); // middle point vector
-		vertexPairs.emplace_back(vertices[vertexIndex], vertices[(vertexIndex + 1) % numberOfVertices] - vertices[vertexIndex]); // edge vector
-	}
-
-	return vertexPairs;
-}
-
-// generate vectors 
-std::vector<std::pair<G4ThreeVector, G4ThreeVector>> generateVertexEdgeVectorPairs(const G4TriangularFacet* facet) {
-	std::vector<std::pair<G4ThreeVector, G4ThreeVector>> vertexPairs;
-	std::vector<G4ThreeVector> vertices, pointVectors;
-
-	// get vertices
-	auto numberOfVertices = facet->GetNumberOfVertices();
-	for (int vertexIndex = 0; vertexIndex < numberOfVertices; vertexIndex++) {
-		auto vertex = facet->GetVertex(vertexIndex);
-		vertices.push_back(vertex);
-	}
-
-	//calculate middle points, middle point vectors and edge vectors
-	for (int vertexIndex = 0; vertexIndex < numberOfVertices; vertexIndex++) {
-		vertexPairs.emplace_back(vertices[vertexIndex], vertices[(vertexIndex + 1) % numberOfVertices] - vertices[vertexIndex]); // edge vector
-	}
-
-	return vertexPairs;
-}
-
-// check if facets share an edge
-bool containsEdge(const G4ThreeVector startPoint, const G4ThreeVector endPoint, const G4TriangularFacet* facet1) {
-	// Check each pair of vertices between the facets
-	for (int i = 0; i < 3; ++i) {
-		G4ThreeVector vertex1 = facet1->GetVertex(i);
-		G4ThreeVector vertex2 = facet1->GetVertex((i + 1) % 3);
-
-		if ((vertex1 == startPoint && vertex2 == endPoint) ||
-			(vertex1 == endPoint && vertex2 == startPoint)) {
-			// Found a matching edge
-			return true;
-		}
-	}
-
-	// No shared edge found
-	return false;
-}
-
-// find intersection distance between line and facet's plane
-bool checkIfVectorIsPerpendicularToFacetPlane(const G4ThreeVector startPoint, const G4ThreeVector direction, const G4TriangularFacet* facet) {
-	G4ThreeVector normal = facet->GetSurfaceNormal().unit();
-	G4ThreeVector vertex = facet->GetVertex(0);
-
-	G4double dotProduct = normal.dot(direction);
-
-	return dotProduct < tolerance && findIntersectionDistance(startPoint, direction, facet) < tolerance;
-}
-
-bool checkIfFacetHasVectorPerpendicularToOtherFacetPlane(const G4TriangularFacet* facet1, const G4TriangularFacet* facet2) {
-	auto vertexVectorPairs1 = generateVertexEdgeVectorPairs(facet1);
-	for (auto [vertex, vector] : vertexVectorPairs1) {
-		if (checkIfVectorIsPerpendicularToFacetPlane(vertex, vector, facet2)) {
-			return true;
-		}
-	}
-	auto vertexVectorPairs2 = generateVertexEdgeVectorPairs(facet2);
-	for (auto [vertex, vector] : vertexVectorPairs2) {
-		if (checkIfVectorIsPerpendicularToFacetPlane(vertex, vector, facet1)) {
-			return true;
-		}
-	}
-	return false;
-};
-
-// check if coplanar (!) point is placed inside the triangle
-bool isPointInsideFacet(const G4ThreeVector& point, const G4TriangularFacet* facet) {
-	std::vector<G4ThreeVector> vertices, edgeVectors, pointVectors;
-	std::vector<G4double> dotProducts;
-	auto numberOfVertices = facet->GetNumberOfVertices();
-	for (int vertexIndex = 0; vertexIndex < numberOfVertices; vertexIndex++) {
-		auto vertex = facet->GetVertex(vertexIndex);
-		vertices.push_back(vertex);
-		pointVectors.push_back(point - vertex);
-	}
-
-	for (int vertexIndex = 0; vertexIndex < numberOfVertices; vertexIndex++) {
-		edgeVectors.push_back(vertices[(vertexIndex + 1) % numberOfVertices] - vertices[vertexIndex]);
-	}
-
-	G4ThreeVector normal = facet->GetSurfaceNormal().unit();
-
-	for (int vertexIndex = 0; vertexIndex < facet->GetNumberOfVertices(); vertexIndex++) {
-		dotProducts.push_back(normal.dot(edgeVectors[vertexIndex].cross(pointVectors[vertexIndex])));
-	}
-
-	return (dotProducts[0] >= 0 && dotProducts[1] >= 0 && dotProducts[2] >= 0) ||
-		(dotProducts[0] <= 0 && dotProducts[1] <= 0 && dotProducts[2] <= 0);
-}
-
-// check if vector intersects facet's plane
-bool doesVectorIntersectFacetPlane(const G4ThreeVector startPoint, const G4ThreeVector vector, const G4TriangularFacet* facet) {
-	auto vectorDirection = vector.unit();
-	G4double intersectionDistance = findIntersectionDistance(startPoint, vectorDirection, facet);
-	auto vectorLenght = vector.mag();
-
-	// check if the vector actually intersects the plane or it's only the line it's on
-	if (intersectionDistance < 0. || intersectionDistance > vectorLenght) {
-		return false;
-	}
-	auto intersectionPoint = startPoint + intersectionDistance * vectorDirection;
-	return isPointInsideFacet(intersectionPoint, facet);
-}
-
-// check if facets share an edge
-bool shareEdge(const G4TriangularFacet* facet1, const G4TriangularFacet* facet2) {
-	// Check each pair of vertices between the facets
-	for (int i = 0; i < 3; ++i) {
-		G4ThreeVector vertex1 = facet1->GetVertex(i);
-		G4ThreeVector vertex2 = facet1->GetVertex((i + 1) % 3);
-
-		for (int j = 0; j < 3; ++j) {
-			G4ThreeVector otherVertex1 = facet2->GetVertex(j);
-			G4ThreeVector otherVertex2 = facet2->GetVertex((j + 1) % 3);
-
-			if ((vertex1 == otherVertex1 && vertex2 == otherVertex2) ||
-				(vertex1 == otherVertex2 && vertex2 == otherVertex1)) {
-				// Found a matching edge
-				return true;
-			}
-		}
-	}
-
-	// No shared edge found
-	return false;
-}
-
-bool doFacetsIntersect(const G4TriangularFacet* facet1, const G4TriangularFacet* facet2) {
-	if (checkIfFacetHasVectorPerpendicularToOtherFacetPlane(facet1, facet2)) {
-		return false;
-	}
-	auto vertexVectorPairs1 = generateVertexVectorPairs(facet1);
-	for (auto [vertex, vector] : vertexVectorPairs1) {
-		if (doesVectorIntersectFacetPlane(vertex, vector, facet2)) {
-			return true;
-		}
-	}
-	auto vertexVectorPairs2 = generateVertexVectorPairs(facet2);
-	for (auto [vertex, vector] : vertexVectorPairs2) {
-		if (doesVectorIntersectFacetPlane(vertex, vector, facet1)) {
-			return true;
-		}
-	}
-	return false;
-}
-
-bool doFacetsIntersect2(const G4TriangularFacet* facet1, const G4TriangularFacet* facet2) {
-	auto normal = facet1->GetSurfaceNormal().unit();
-	//std::cout << normal << '\n';
-	G4ThreeVector vertexComp = facet1->GetVertex(0);
-	G4ThreeVector vertex1 = facet2->GetVertex(0);
-	//std::cout << vertex1 << '\n';
-	G4ThreeVector vertex2 = facet2->GetVertex(1);
-	//std::cout << vertex2 << '\n';
-	G4ThreeVector vertex3 = facet2->GetVertex(2);
-	//std::cout << vertex3 << '\n';
-
-	G4ThreeVector vector1 = vertex1 - vertexComp;
-	//std::cout << vector1 << '\n';
-	G4ThreeVector vector2 = vertex2 - vertexComp;
-	//std::cout << vector2 << '\n';
-	G4ThreeVector vector3 = vertex3 - vertexComp;
-	//std::cout << vector3 << '\n';
-
-	G4double dotProduct1 = normal * vector1;
-	//std::cout << dotProduct1 << '\n';
-	G4double dotProduct2 = normal * vector2;
-	//std::cout << dotProduct2 << '\n';
-	G4double dotProduct3 = normal * vector3;
-	//std::cout << dotProduct3 << '\n';
-
-	return !((dotProduct1 >= -tolerance && dotProduct2 >= -tolerance && dotProduct3 >= -tolerance) ||
-		(dotProduct1 <= tolerance && dotProduct2 <= tolerance && dotProduct3 <= tolerance));
-}
-
-G4double getPointDistanceFromFacetPlane(const G4ThreeVector point, const G4ThreeVector direction, const G4TriangularFacet* facet) {
-	return findIntersectionDistance(point, direction, facet);
-};
-
-G4ThreeVector shiftPointToFacetPlaneXY(const G4ThreeVector point, const G4TriangularFacet* facet) {
-	auto normal = facet->GetSurfaceNormal().unit();
-	normal.setZ(0.);
-	auto distance = getPointDistanceFromFacetPlane(point, normal, facet);
-	return point + distance * normal;
-}
 
 SLCJDetectorConstruction::SLCJDetectorConstruction(G4double foodV) : foodVolume(foodV) {}
 
@@ -651,6 +404,71 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 		frontMiddleHeight = 5 * mm,//height - frontWall_Height_ * std::sqrt(1 - std::pow(topProtrusion / height, 2));
 		frontMiddleWidth = 21.4 * mm;
 
+	// vertex offset to keep (0,0,0) point inside the container
+	G4ThreeVector vertexOffset(0, -frontBottomDepth / 2, -2 * mm);
+
+	//<--------------------------------------------------------Bottle neck solid construction-------------------------------------------->
+
+	// Define neck dimensions
+	G4double
+		neckLength = 22.0 * mm,
+		neckOuterRadius = 10.0 * mm,
+		neckInnerRadius = neckOuterRadius - wallThickness;
+
+	// Create neck solid
+	G4Tubs* neckSolid = new G4Tubs("neckSolid", 0, neckOuterRadius, neckLength / 2.0, 0.0, CLHEP::twopi);
+
+	// Create neck solid
+	G4Tubs* neckInternalSolid = new G4Tubs("neckSolid", 0, neckInnerRadius, neckLength / 2.0, 0.0, CLHEP::twopi);
+
+	// Define cap dimensions
+	G4double
+		capOuterRadius = 12.3 * mm,
+		capHeight = 14.5 * mm,
+		capInnerRadius = capOuterRadius - wallThickness,
+		capNarrowingInnerRadius = 10.0 * mm,
+		capNarrowingHeight = 1.0 * mm;
+
+	// Create solid for cap main body
+	G4Tubs* capBodySolid = new G4Tubs("capBodySolid", capInnerRadius, capOuterRadius, capHeight / 2.0, 0.0, CLHEP::twopi);
+
+	// Create solid for cap main body
+	G4Tubs* capClosingSolid = new G4Tubs("capClosingSolid", 0, capInnerRadius, wallThickness / 2.0, 0.0, CLHEP::twopi);
+
+	// Create solid for cap narrowing
+	G4Cons* capNarrowingSolid = new G4Cons("capNarrowingSolid", 0.0, capInnerRadius, 0.0, capNarrowingInnerRadius, capNarrowingHeight / 2.0, 0.0, CLHEP::twopi);
+
+	// Create union solid for cap
+	G4UnionSolid* capOpenSolid = new G4UnionSolid("capOpenSolid", capBodySolid, capNarrowingSolid, 0, G4ThreeVector(0.0, 0.0, capHeight / 2.0 - capNarrowingHeight / 2.0));
+
+	// Create union solid for cap
+	G4UnionSolid* capSolid = new G4UnionSolid("capSolid", capBodySolid, capClosingSolid, 0, G4ThreeVector(0.0, 0.0, capHeight / 2 - wallThickness / 2.0));
+
+
+	// Create a logical volume for capSolid
+	G4LogicalVolume* capLogical = new G4LogicalVolume(capSolid, Polystyrene, "capLogical");
+
+	// define neck position
+	const G4double
+		neckEndBottomHeight = 10 * mm,
+		neckHeightDifference = neckEndBottomHeight - frontMiddleHeight,
+		neckAngleSine = neckHeightDifference / neckLength,
+		neckAngle = std::asin(neckAngleSine);
+
+	// Create a physical placement for neckLogical
+	G4RotationMatrix* neckRotation = new G4RotationMatrix();
+	neckRotation->rotateX(90 * deg + neckAngle);
+	G4RotationMatrix* capRotation = new G4RotationMatrix();
+	capRotation->rotateX(-90 * deg + neckAngle);
+	G4ThreeVector neckTranslation(0, topEdgeLenght + neckLength / 2 - neckOuterRadius * neckAngleSine - 3 * mm, frontMiddleHeight + (height - frontMiddleHeight) / 2 + 3 * mm);
+	G4ThreeVector capTranslation(0, topEdgeLenght + neckLength / 2 - neckOuterRadius * neckAngleSine - 3 * mm + (neckLength - capHeight + 2 * wallThickness) / 2 * std::cos(neckAngle), frontMiddleHeight + (height - frontMiddleHeight) / 2 + 3 * mm + (neckLength - capHeight + 2 * wallThickness) / 2 * neckAngleSine);
+	G4Transform3D neckTransform(*neckRotation, neckTranslation + vertexOffset);
+	G4Transform3D capTransform(*capRotation, capTranslation);
+
+	G4VPhysicalVolume* capPhysical = new G4PVPlacement(capTransform, capLogical, "capPhysical", logicWorld, false, 0);
+
+	//<--------------------------------------------------------External solid construction----------------------------------------------->
+
 	auto rightToLeft = [](G4ThreeVector v) {
 		return G4ThreeVector(-v.x(), v.y(), v.z());
 	};
@@ -689,290 +507,158 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 		[](const auto& element) { return element; });
 
 	// Declare main body solid before adding facets
-	G4TessellatedSolid* mainBodySolid = new G4TessellatedSolid("mainBodySolid");
+	G4TessellatedSolid* mainBodyExternalSolid = new G4TessellatedSolid("mainBodyExternalSolid");
 
 	// vector of body facets
-	std::vector<G4TriangularFacet*> externalContainerFacetsVector;
+	std::vector<G4TriangularFacet*> externalContainerConstructionFacetsVector;
 
-	// vertex offset to keep (0,0,0) point inside the container
-	G4ThreeVector vertexOffset(0, -0 * cm, 0);
+	for (auto& vertex : externalContainerVerticesVector) {
+		vertex += vertexOffset;
+	}
 
 	// Loop over all possible triangular facets and add them to the tessellated solid
 	for (size_t i = 0; i < externalContainerVerticesVector.size() - 2; i++) {
 		for (size_t j = i + 1; j < externalContainerVerticesVector.size() - 1; j++) {
 			for (size_t k = j + 1; k < externalContainerVerticesVector.size(); k++) {
-				externalContainerFacetsVector.push_back(new G4TriangularFacet(
-					externalContainerVerticesVector[i] + vertexOffset,
-					externalContainerVerticesVector[j] + vertexOffset,
-					externalContainerVerticesVector[k] + vertexOffset,
+				externalContainerConstructionFacetsVector.push_back(new G4TriangularFacet(
+					externalContainerVerticesVector[i],
+					externalContainerVerticesVector[j],
+					externalContainerVerticesVector[k],
 					ABSOLUTE));
 			}
 		}
 	}
 
-
-	// Function to check if a facet intersects with any other facet while not being in the same plane
-	auto isIntersectingAndNotInSamePlane = [&](G4TriangularFacet* facet, std::vector<G4TriangularFacet*>& facets) {
-		for (const auto& otherFacet : facets) {
-			if (facet != otherFacet && !areFacetsInSamePlane(facet, otherFacet) && doFacetsIntersect(facet, otherFacet))
-				return true;
-		}
-		return false;
-	};
-
-	std::cout << "Le size: " << externalContainerFacetsVector.size() << '\n';
-
-	if (false) {
-
-		// set of external vertices
-		std::vector<G4ThreeVector> testVec;
-
-		//those are right external vertices
-		testVec.emplace_back(topWidth / 2, 0, height);
-		testVec.emplace_back(-frontTopWidth / 2, frontTopDepth, height);
-		testVec.emplace_back(frontTopWidth / 2, frontTopDepth, height);
-
-		auto facet = new G4TriangularFacet(testVec[0], testVec[1], testVec[2], ABSOLUTE);
-		std::cout << "My facet:\n";
-		for (int i = 0; i < 3; i++) {
-			std::cout << facet->GetVertex(i) << '\n';
-		}
-
-		int howManyTimesTrue = 0, howManyChecked = 0, howManyFacetsTrue = 0;
-		for (auto otherFacet : externalContainerFacetsVector) {
-			//	const auto counterCopy = howManyTimesTrue;
-			//auto otherFacet = externalContainerFacetsVector[12];
-					//std::cout << howManyTimesTrue++ << '\n';
-			if (facet != otherFacet && !(areFacetsInSamePlane(facet, otherFacet) || shareEdge(facet, otherFacet) || shareVertex(facet, otherFacet)) && doFacetsIntersect(facet, otherFacet)) {
-				std::cout << "Intersecting facet:\n";
-				for (int i = 0; i < 3; i++) {
-					std::cout << otherFacet->GetVertex(i) << '\n';
-				}
-				exit(0);
-			}
-			//	howManyFacetsTrue += (howManyTimesTrue != counterCopy);
-		}
-		//std::cout << "Le counter: " << howManyTimesTrue << '\t' << howManyChecked << '\t' << howManyFacetsTrue << '\n';
-	}
-
 	// Remove facets from the vector that intersect with at least one other facet while not being in the same plane
-	std::erase_if(externalContainerFacetsVector,
+	std::erase_if(externalContainerConstructionFacetsVector,
 		[&](G4TriangularFacet* facet) {
-			return std::any_of(externalContainerFacetsVector.begin(), externalContainerFacetsVector.end(), [&](G4TriangularFacet* otherFacet) {
-				return facet != otherFacet && !(areFacetsInSamePlane(facet, otherFacet) || shareEdge(facet, otherFacet) || shareVertex(facet, otherFacet)) && doFacetsIntersect(facet, otherFacet);
+			return std::any_of(externalContainerConstructionFacetsVector.begin(), externalContainerConstructionFacetsVector.end(), [&](G4TriangularFacet* otherFacet) {
+				return facet != otherFacet && !(areFacetsCoplanar(facet, otherFacet) || shareEdge(facet, otherFacet) || shareVertex(facet, otherFacet)) && doFacetsIntersect(facet, otherFacet);
 				});
 		});
 
-	std::cout << "Le size: " << externalContainerFacetsVector.size() << '\n';
+	auto groups = groupCoplanarFacets(externalContainerConstructionFacetsVector);
 
-	decltype(externalContainerFacetsVector) externalContainerFacetsVector2;
-	auto temp = std::vector(externalContainerFacetsVector.rbegin(), externalContainerFacetsVector.rend());
-	for (auto facet : temp) {
-		if (std::none_of(externalContainerFacetsVector2.begin(), externalContainerFacetsVector2.end(), [&](G4TriangularFacet* otherFacet) { return areFacetsInSamePlane(facet, otherFacet) && doFacetsIntersect(facet, otherFacet); })) {
-			externalContainerFacetsVector2.push_back(facet);
+	decltype(externalContainerConstructionFacetsVector) externalContainerFacetsVector;
+
+	for (auto& group : groups) {
+		std::set<G4ThreeVector> vertices;
+		for (auto facet : group) {
+			auto verticesFacet = getVertices(facet);
+			for (auto vertex : verticesFacet) {
+				vertices.insert(vertex);
+			}
+		}
+		auto facets = spanFacets(vertices);
+		for (auto facet : facets) {
+			externalContainerFacetsVector.push_back(facet);
+			mainBodyExternalSolid->AddFacet((G4VFacet*)facet);
 		}
 	}
 
-	std::cout << "Le size - removed overlaps: " << externalContainerFacetsVector2.size() << '\n';
+	// Set the solid as closed to ensure proper inside/outside determination
+	mainBodyExternalSolid->SetSolidClosed(true);
 
-	for (auto facet : externalContainerFacetsVector2) {
-		mainBodySolid->AddFacet((G4VFacet*)facet);
+	//<--------------------------------------------------------Internal solid construction----------------------------------------------->
+
+	decltype(externalContainerConstructionFacetsVector) internalContainerFacetsVector;
+
+	auto mapVertexNormals = getVertexFacetsMap(externalContainerVerticesVector, groups);
+
+	std::map<G4ThreeVector, G4ThreeVector> pointsTranslated;
+
+	for (auto vertexNormals : mapVertexNormals) {
+		pointsTranslated[vertexNormals.first] = calculateInternalPoint(vertexNormals);
+	}
+	checkpoint;
+	G4TessellatedSolid* mainBodyInternalSolid = new G4TessellatedSolid("mainBodyInternalSolid");
+
+	for (auto facet : externalContainerFacetsVector) {
+		auto vertices = getVertices(facet);
+		mainBodyInternalSolid->AddFacet(new G4TriangularFacet(pointsTranslated[vertices[0]], pointsTranslated[vertices[1]], pointsTranslated[vertices[2]], ABSOLUTE));
 	}
 
 	// Set the solid as closed to ensure proper inside/outside determination
-	mainBodySolid->SetSolidClosed(true);
+	mainBodyInternalSolid->SetSolidClosed(true);
+
+
+	auto mainBodyExternalSolidWithNeck = new G4UnionSolid("mainBodyExternalSolidWithNeck", mainBodyExternalSolid, neckSolid, neckTransform);
+
+	auto mainBodyInternalSolidWithNeck = new G4UnionSolid("mainBodyExternalSolidWithNeck", mainBodyInternalSolid, neckInternalSolid, neckTransform);
+
+	//std::cout << "Volume: " << mainBodyExternalSolidWithNeck->GetCubicVolume() / cm3 << "cm3\n";
 
 	// Create a logical volume for mainBodySolid
-	G4LogicalVolume* mainBodyLogical = new G4LogicalVolume(mainBodySolid, Polystyrene, "mainBodyLogical");
+	G4LogicalVolume* mainBodyInternalLogical = new G4LogicalVolume(mainBodyInternalSolidWithNeck, Air, "mainBodyInternalLogical");
+	// Create a logical volume for mainBodySolid
+	G4LogicalVolume* mainBodyExternalLogical = new G4LogicalVolume(mainBodyExternalSolidWithNeck, Polystyrene, "mainBodyExternalLogical");
 
 	// Create a physical placement for mainBodyLogical
 	G4RotationMatrix* rotation = new G4RotationMatrix();
-	G4ThreeVector translation(0, 0, 0);  // Set the translation vector as per your requirement
+	G4ThreeVector translation = -vertexOffset;  // Set the translation vector as per your requirement
 	G4Transform3D transform(*rotation, translation);
 
-	G4VPhysicalVolume* mainBodyPhysical = new G4PVPlacement(transform, mainBodyLogical, "mainBodyPhysical", logicWorld, false, 0);
+	G4VPhysicalVolume* mainBodyPhysical = new G4PVPlacement(rotation, -vertexOffset, mainBodyExternalLogical, "mainBodyExternalPhysical", logicWorld, false, 0);
+
+	G4VPhysicalVolume* mainBodyInternalPhysical = new G4PVPlacement(neckTransform, mainBodyInternalLogical, "mainBodyInternalPhysical", mainBodyExternalLogical, false, 0);
+
+	//<--------------------------------------------------------Cells and food construction----------------------------------------------->
+
+	const G4double cellsLayerThickness = 200 * um;
+
+	auto cellsBaseSolid = new G4Box("cellsBaseSolid", cellsLayerThickness / 2, cellsLayerThickness / 2, cellsLayerThickness / 2);
+
+	int i = 120;
+	std::map<G4ThreeVector, G4double> vals;
+	for (int i = -20; i < 40; i += 10) {
+		for (int j = -40; j < 60; j += 10) {
+			for (int k = -20; k < 40; k += 10) {
+				vals[G4ThreeVector(i, j, k) * mm] = 0.;
+			}
+		}
+	}
 
 
-	G4double
-		length = 10.0 * cm,
-		width = 10.0 * cm,
-		cornerLength = 1.0 * cm,
-		neckRadius = 0.5 * cm,
-		neckHeight = 1.0 * cm;
+	std::vector<G4double> hs(i), vols(i);
+	std::iota(hs.begin(), hs.end(), 0.);
 
-	// Define neck dimensions
-	G4double
-		neckLength = 22.0 * mm,
-		neckOuterRadius = 10.0 * mm,
-		neckInnerRadius = neckOuterRadius - wallThickness;
+	std::for_each(std::execution::par_unseq, vals.begin(), vals.end(), [&](std::pair<const G4ThreeVector, G4double> vvpair) {
+		auto cellsSolid = new G4IntersectionSolid("cellsSolid", mainBodyInternalSolidWithNeck, cellsBaseSolid, nullptr, vvpair.first);
+		vals[vvpair.first] = cellsSolid->GetCubicVolume() / cm3;
+		delete cellsSolid;
+		});
 
-	// Create neck solid
-	G4Tubs* neckSolid = new G4Tubs("tubeSolid", neckInnerRadius, neckOuterRadius, neckLength / 2.0, 0.0, CLHEP::twopi);
+	G4ThreeVector top(-2000 * mm), bottom(2000 * mm);
+	for (auto [vec, val] : vals) {
+		if (val > 0) {
+			if (vec.getX() > top.getX()) {
+				top.setX(vec.getX());
+			}
+			if (vec.getX() < bottom.getX()) {
+				bottom.setX(vec.getX());
+			}
+			if (vec.getY() > top.getY()) {
+				top.setY(vec.getY());
+			}
+			if (vec.getY() < bottom.getY()) {
+				bottom.setY(vec.getY());
+			}
+			if (vec.getZ() > top.getZ()) {
+				top.setZ(vec.getZ());
+			}
+			if (vec.getZ() < bottom.getZ()) {
+				bottom.setZ(vec.getZ());
+			}
+		}
+	}
+	std::cout << "top:" << top / mm << " mm\n";
+	std::cout << "bottom:" << bottom / mm << " mm\n";
+	system("pause");
 
-	// Define cap dimensions
-	G4double
-		capOuterRadius = 12.3 * mm,
-		capHeight = 14.5 * mm,
-		capInnerRadius = capOuterRadius - wallThickness,
-		capNarrowingInnerRadius = 10.0 * mm,
-		capNarrowingHeight = 1.0 * mm;
+	// Create a logical volume for mainBodySolid
+	G4LogicalVolume* cellsLogical = new G4LogicalVolume(cellsBaseSolid, water, "cellsLogical");
 
-	// Create solid for cap main body
-	G4Tubs* capBodySolid = new G4Tubs("capBodySolid", 0.0, capOuterRadius, capHeight / 2.0, 0.0, CLHEP::twopi);
-
-	// Create solid for cap narrowing
-	G4Cons* capNarrowingSolid = new G4Cons("capNarrowingSolid", 0.0, capInnerRadius, 0.0, capNarrowingInnerRadius, capNarrowingHeight / 2.0, 0.0, CLHEP::twopi);
-
-	// Create union solid for cap
-	G4UnionSolid* capSolid = new G4UnionSolid("capSolid", capBodySolid, capNarrowingSolid, 0, G4ThreeVector(0.0, 0.0, capHeight / 2.0 - capNarrowingHeight / 2.0));
-
-	//enum Location {
-	//	Internal = -1,
-	//	External = 0
-	//};
-	//enum Height {
-	//	Top = 1,
-	//	Bottom = -1,
-	//	Cuttoff = 0,
-	//};
-	//enum Depth {
-	//	Back = -1,
-	//	Middle = 0,
-	//	Front = 1
-	//};
-	//enum Width {
-	//	Left = -1,
-	//	Right = 1
-	//};
-	//
-	//// Define the vertices of the container
-	//// internal/external - if the vertex is on the inside or the outside
-	//// top/bottom - top is the direction towards which bottleneck is angled
-	//// back/middle/front - if the vertex is on the opposite side to bottlneck, between back and front or on the side of bottleneck
-	//// left/right - determined based on looking from the back in the direction of bottleneck with it pointing upwards
-	//G4ThreeVector externalTopBackRightVertex(25.0 * mm, 25.0 * mm, 15.0 * mm);
-	//G4ThreeVector externalTopBackLeftVertex(-25.0 * mm, 25.0 * mm, 15.0 * mm);
-	//G4ThreeVector externalTopFrontLeftVertex(-25.0 * mm, 25.0 * mm, -15.0 * mm);
-	//G4ThreeVector externalTopFrontRightVertex(25.0 * mm, 25.0 * mm, -15.0 * mm);
-	//G4ThreeVector internalTopBackRightVertex(23.0 * mm, 23.0 * mm, 13.0 * mm);
-	//G4ThreeVector internalTopBackLeftVertex(-23.0 * mm, 23.0 * mm, 13.0 * mm);
-	//G4ThreeVector internalTopFrontLeftVertex(-23.0 * mm, 23.0 * mm, -13.0 * mm);
-	//G4ThreeVector internalTopFrontRightVertex(23.0 * mm, 23.0 * mm, -13.0 * mm);
-	//G4ThreeVector externalBottomBackRightVertex(25.0 * mm, -25.0 * mm, 15.0 * mm);
-	//G4ThreeVector externalBottomBackLeftVertex(-25.0 * mm, -25.0 * mm, 15.0 * mm);
-	//G4ThreeVector externalBottomFrontLeftVertex(-25.0 * mm, -25.0 * mm, -15.0 * mm);
-	//G4ThreeVector externalBottomFrontRightVertex(25.0 * mm, -25.0 * mm, -15.0 * mm);
-	//G4ThreeVector internalBottomBackRightVertex(23.0 * mm, -23.0 * mm, 13.0 * mm);
-	//G4ThreeVector internalBottomBackLeftVertex(-23.0 * mm, -23.0 * mm, 13.0 * mm);
-	//G4ThreeVector internalBottomFrontLeftVertex(-23.0 * mm, -23.0 * mm, -13.0 * mm);
-	//G4ThreeVector internalBottomFrontRightVertex(23.0 * mm, -23.0 * mm, -13.0 * mm);
-	//G4ThreeVector externalBottleneckTopVertex(0.0 * mm, 35.0 * mm, 0.0 * mm);
-	//G4ThreeVector externalBottleneckBottomVertex(0.0 * mm, -25.0 * mm, 0.0 * mm);
-	//G4ThreeVector internalBottleneckTopVertex(0.0 * mm, 33.0 * mm, 0.0 * mm);
-	//G4ThreeVector internalBottleneckBottomVertex(0.0 * mm, -23.0 * mm, 0.0 * mm);
-	//
-	//
-	//G4ThreeVector v0(0, 0, 0);
-	//G4ThreeVector v1(1, 0, 0);
-	//G4ThreeVector v2(0.5, std::sqrt(3) / 2, 0);
-	//G4ThreeVector v3(0.5, std::sqrt(3) / 6, std::sqrt(2. / 3.));
-	//
-	//// Define the triangular facets of the container
-	//G4TriangularFacet* facet1 = new G4TriangularFacet(v0, v1, v2, ABSOLUTE);
-	//G4TriangularFacet* facet2 = new G4TriangularFacet(v0, v3, v1, ABSOLUTE);
-	//G4TriangularFacet* facet3 = new G4TriangularFacet(v1, v3, v2, ABSOLUTE);
-	//G4TriangularFacet* facet4 = new G4TriangularFacet(v2, v3, v0, ABSOLUTE);
-	//
-	//// Add the facets to the tessellated solid
-	//mainBodySolid->AddFacet(facet1);
-	//mainBodySolid->AddFacet(facet2);
-	//mainBodySolid->AddFacet(facet3);
-	//mainBodySolid->AddFacet(facet4);
-	//
-	//// Create a logical volume and place it in the simulation
-	//G4LogicalVolume* tetrahedronLV = new G4LogicalVolume(mainBodySolid, Air, "TetrahedronLV");
-	//G4VPhysicalVolume* tetrahedronPV = new G4PVPlacement(0, G4ThreeVector(), tetrahedronLV, "TetrahedronPV", logicWorld, false, 0);
-	//
-	//
-	//
-	//bool checkOverlaps = true;
-	//
-	//// Create shapes
-	//G4Box* cuboid = new G4Box("cuboid", length / 2, width / 2, height / 2);
-	//
-	//G4Tubs* bottleNeck = new G4Tubs("bottleNeck", 0, neckRadius, neckHeight / 2, 0, 360.0 * deg);
-	//
-	//G4SubtractionSolid* cutCuboid1 = new G4SubtractionSolid("cutCuboid1", cuboid, bottleNeck);
-	//
-	//G4ThreeVector translate1(length / 2 - cornerLength, width / 2 - cornerLength, 0);
-	//
-	//G4SubtractionSolid* cutCuboid2 = new G4SubtractionSolid("cutCuboid2", cutCuboid1, bottleNeck, 0, translate1);
-	//
-	//G4ThreeVector translate2(-length / 2 + cornerLength, width / 2 - cornerLength, 0);
-	//
-	//G4SubtractionSolid* cutCuboid3 = new G4SubtractionSolid("cutCuboid3", cutCuboid2, bottleNeck, 0, translate2);
-	//
-	//G4ThreeVector translate3(-length / 2 + cornerLength, -width / 2 + cornerLength, 0);
-	//
-	//G4SubtractionSolid* cutCuboid4 = new G4SubtractionSolid("cutCuboid4", cutCuboid3, bottleNeck, 0, translate3);
-	//
-	//// Create logical volumes
-	//G4LogicalVolume* logicalShape = new G4LogicalVolume(cutCuboid4, Air, "logicalShape");
-	//
-	//G4ThreeVector translate4(0, 0, (height - neckHeight) / 2);
-	//
-	////new G4PVPlacement(0, translate4, "bottleNeck", logicalShape, bottleNeck, false, 0);
-	//
-	//G4double insideLength = length - 2 * wallThickness;
-	//G4double insideWidth = width - 2 * wallThickness;
-	//G4double insideHeight = height - neckHeight - 2 * wallThickness - 2 * cornerLength;
-	//
-	//G4Box* insideShape = new G4Box("insideShape", insideLength / 2, insideWidth / 2, insideHeight / 2);
-	//
-	//G4SubtractionSolid* finalShape = new G4SubtractionSolid("finalShape", logicalShape->GetSolid(), insideShape);
-	//
-	//G4LogicalVolume* logicalInside = new G4LogicalVolume(insideShape, Air, "logicalInside");
-	//
-	//G4ThreeVector translate5(0, 0, -insideHeight / 2);
-	//
-	////new G4PVPlacement(0, translate5, "inside", logicalInside, finalShape, false, 0, checkOverlaps);
-
-
-
-
-
-	////<-------------------------------------------------------Old shit------------------------------------------------------------------>
-	//
-	//// Define the dimensions of the active volume
-	//G4double activeVolumeX = 20 * cm;
-	//G4double activeVolumeY = 33 * cm;
-	//G4double activeVolumeZ = 21 * cm;
-	//
-	//// Define the dimensions of the external volume
-	//G4double externalVolumeX = 22.2 * cm;
-	//G4double externalVolumeY = 34.2 * cm;
-	//G4double externalVolumeZ = 22 * cm;
-	//
-	//// Create a solid volume for the active volume
-	//G4Box* activeVolumeSolid = new G4Box("activeVolumeSolid", activeVolumeX / 2, activeVolumeY / 2, activeVolumeZ / 2);
-	//
-	//// Create a solid volume for the external volume
-	//G4Box* externalVolumeSolid = new G4Box("externalVolumeSolid", externalVolumeX / 2, externalVolumeY / 2, externalVolumeZ / 2);
-	//
-	//// Subtract the active volume from the external volume to create detector walls
-	//G4SubtractionSolid* wallsSolid = new G4SubtractionSolid("wallsSolid", externalVolumeSolid, activeVolumeSolid /*, 0, activeVolumeShift*/);
-	//
-	//// Assign the Stesalit material to the walls of the detector
-	//G4LogicalVolume* wallsLogical = new G4LogicalVolume(wallsSolid, Polystyrene, "wallsLogical");
-	//
-	//// Assign the GasSLCJ to the active volume of the detector
-	//G4LogicalVolume* activeVolumeLogical = new G4LogicalVolume(activeVolumeSolid, Air, "activeVolumeLogical");
-	//
-	//G4VPhysicalVolume* physiSLCJ = new G4PVPlacement(0, SLCJ_position, "SLCJ_activeVolume", activeVolumeLogical, physimother_SLCJ, false, 0);
-	//G4VPhysicalVolume* physiWallsSLCJ = new G4PVPlacement(0, SLCJ_position, "SLCJ_walls", wallsLogical, physimother_SLCJ, false, 0);
-
-
-
+	G4VPhysicalVolume* cellsPhysical = new G4PVPlacement(nullptr, G4ThreeVector(2 * cm, 1 * cm, 10 * mm), cellsLogical, "cellsPhysical", logicWorld, false, 0);
 
 	// Construct the field creator - this will register the field it creates
 	//F02ElectricFieldSetup* fieldSetup = new F02ElectricFieldSetup();
@@ -992,7 +678,7 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 
 
 	// red color for detector 
-	G4VisAttributes* Att2 = new G4VisAttributes(G4Colour::Red());
+	G4VisAttributes* Att_red = new G4VisAttributes(G4Colour::Red());
 	// blue for gas
 	G4VisAttributes* Att3 = new G4VisAttributes(G4Colour::Blue());
 	// grey for PMT
@@ -1004,7 +690,7 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	// black
 	G4VisAttributes* Att_black = new G4VisAttributes(G4Colour::Black());
 	// green
-	G4VisAttributes* Att8 = new G4VisAttributes(G4Colour::Green());
+	G4VisAttributes* Att_green = new G4VisAttributes(G4Colour::Green());
 	// orange
 	G4VisAttributes* Att_orange = new G4VisAttributes(G4Colour(1, 0.5, 0, 0.8));
 	// dark green
@@ -1022,7 +708,10 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	//SLCJLogicalVolume->SetVisAttributes(G4VisAttributes::GetInvisible());
 	//activeVolumeLogical->SetVisAttributes(G4VisAttributes::GetInvisible());
 	//wallsLogical->SetVisAttributes(Att_pale_yellow);
-	mainBodyLogical->SetVisAttributes(Att_pale_yellow);
+	mainBodyInternalLogical->SetVisAttributes(Att_light_blue);
+	mainBodyExternalLogical->SetVisAttributes(Att_pale_yellow);
+	capLogical->SetVisAttributes(Att_green);
+	cellsLogical->SetVisAttributes(Att_red);
 
 	//
 	// always return the physical World
