@@ -1,0 +1,26 @@
+# Macro script to generate a detector geometry image using G4RayTracer
+
+# Set the output file name
+/control/alias outputFile image.png
+
+# Load necessary libraries
+/run/initialize
+
+# Set up visualization
+/vis/open OGL
+/vis/scene/create
+/vis/scene/add/axes 0 0 0 10 cm
+/vis/viewer/set/viewpointThetaPhi 90. 0.
+/vis/viewer/zoom 2
+
+# Set up the raytracer
+/raytracer/geometry/setDefaultColor white
+/raytracer/geometry/setDetectorShapeBox 10 cm 10 cm 10 cm
+/raytracer/geometry/setDetectorMaterial G4_Galactic
+/raytracer/geometry/addDetectorPlacement 0 0 0
+
+# Generate the image
+/raytracer/trace
+
+# Save the image
+/vis/viewer/saveView outputFile

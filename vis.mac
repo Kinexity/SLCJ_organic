@@ -7,6 +7,8 @@
 # Visualization commands
 /vis/scene/create
 
+/vis/open OGLIX
+
 #/vis/open DAWNFILE
 /vis/open VRML2FILE
 

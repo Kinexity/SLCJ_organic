@@ -38,9 +38,6 @@
 #include <map>
 #include <tuple>
 #include <set>
-#include <algorithm>
-#include <numeric>
-#include <execution>
 #include <boost/math/tools/roots.hpp>
 
 #include "G4IntersectionSolid.hh"
@@ -460,7 +457,7 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	neckRotation->rotateX(90 * deg + neckAngle);
 	G4RotationMatrix* capRotation = new G4RotationMatrix();
 	capRotation->rotateX(-90 * deg + neckAngle);
-	G4ThreeVector neckTranslation(0, topEdgeLenght + neckLength / 2 - neckOuterRadius * neckAngleSine - 3 * mm, frontMiddleHeight + (height - frontMiddleHeight) / 2 + 3 * mm);
+	G4ThreeVector neckTranslation(0, topEdgeLenght + neckLength / 2 - neckOuterRadius * neckAngleSine + 3 * mm, frontMiddleHeight + (height - frontMiddleHeight) / 2 + 3 * mm);
 	G4ThreeVector capTranslation(0, topEdgeLenght + neckLength / 2 - neckOuterRadius * neckAngleSine - 3 * mm + (neckLength - capHeight + 2 * wallThickness) / 2 * std::cos(neckAngle), frontMiddleHeight + (height - frontMiddleHeight) / 2 + 3 * mm + (neckLength - capHeight + 2 * wallThickness) / 2 * neckAngleSine);
 	G4Transform3D neckTransform(*neckRotation, neckTranslation + vertexOffset);
 	G4Transform3D capTransform(*capRotation, capTranslation);
@@ -600,66 +597,20 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 
 	G4VPhysicalVolume* mainBodyPhysical = new G4PVPlacement(rotation, -vertexOffset, mainBodyExternalLogical, "mainBodyExternalPhysical", logicWorld, false, 0);
 
-	G4VPhysicalVolume* mainBodyInternalPhysical = new G4PVPlacement(neckTransform, mainBodyInternalLogical, "mainBodyInternalPhysical", mainBodyExternalLogical, false, 0);
+	G4VPhysicalVolume* mainBodyInternalPhysical = new G4PVPlacement(rotation, G4ThreeVector(), mainBodyInternalLogical, "mainBodyInternalPhysical", mainBodyExternalLogical, false, 0);
 
 	//<--------------------------------------------------------Cells and food construction----------------------------------------------->
 
-	const G4double cellsLayerThickness = 200 * um;
+	const G4double cellsLayerThickness = 2 * um;
 
-	auto cellsBaseSolid = new G4Box("cellsBaseSolid", cellsLayerThickness / 2, cellsLayerThickness / 2, cellsLayerThickness / 2);
+	auto cellsBaseSolid = new G4Box("cellsBaseSolid", topEdgeWidth / 2, topEdgeLenght / 2, cellsLayerThickness / 2);
 
-	int i = 120;
-	std::map<G4ThreeVector, G4double> vals;
-	for (int i = -20; i < 40; i += 10) {
-		for (int j = -40; j < 60; j += 10) {
-			for (int k = -20; k < 40; k += 10) {
-				vals[G4ThreeVector(i, j, k) * mm] = 0.;
-			}
-		}
-	}
-
-
-	std::vector<G4double> hs(i), vols(i);
-	std::iota(hs.begin(), hs.end(), 0.);
-
-	std::for_each(std::execution::par_unseq, vals.begin(), vals.end(), [&](std::pair<const G4ThreeVector, G4double> vvpair) {
-		auto cellsSolid = new G4IntersectionSolid("cellsSolid", mainBodyInternalSolidWithNeck, cellsBaseSolid, nullptr, vvpair.first);
-		vals[vvpair.first] = cellsSolid->GetCubicVolume() / cm3;
-		delete cellsSolid;
-		});
-
-	G4ThreeVector top(-2000 * mm), bottom(2000 * mm);
-	for (auto [vec, val] : vals) {
-		if (val > 0) {
-			if (vec.getX() > top.getX()) {
-				top.setX(vec.getX());
-			}
-			if (vec.getX() < bottom.getX()) {
-				bottom.setX(vec.getX());
-			}
-			if (vec.getY() > top.getY()) {
-				top.setY(vec.getY());
-			}
-			if (vec.getY() < bottom.getY()) {
-				bottom.setY(vec.getY());
-			}
-			if (vec.getZ() > top.getZ()) {
-				top.setZ(vec.getZ());
-			}
-			if (vec.getZ() < bottom.getZ()) {
-				bottom.setZ(vec.getZ());
-			}
-		}
-	}
-	std::cout << "top:" << top / mm << " mm\n";
-	std::cout << "bottom:" << bottom / mm << " mm\n";
-	system("pause");
+	auto cellsSolid = new G4UnionSolid("cellsSolid", mainBodyInternalSolidWithNeck, cellsBaseSolid, nullptr, G4ThreeVector(0, 0, -2*mm));
 
 	// Create a logical volume for mainBodySolid
-	G4LogicalVolume* cellsLogical = new G4LogicalVolume(cellsBaseSolid, water, "cellsLogical");
+	G4LogicalVolume* cellsLogical = new G4LogicalVolume(cellsSolid, water, "cellsLogical");
 
-	G4VPhysicalVolume* cellsPhysical = new G4PVPlacement(nullptr, G4ThreeVector(2 * cm, 1 * cm, 10 * mm), cellsLogical, "cellsPhysical", logicWorld, false, 0);
-
+	G4VPhysicalVolume* cellsPhysical = new G4PVPlacement(nullptr, -vertexOffset - G4ThreeVector(0,0,0)*mm, cellsLogical, "cellsPhysical", logicWorld, false, 0);
 	// Construct the field creator - this will register the field it creates
 	//F02ElectricFieldSetup* fieldSetup = new F02ElectricFieldSetup();
 
