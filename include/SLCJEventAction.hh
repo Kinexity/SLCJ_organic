@@ -22,6 +22,8 @@
 #include "globals.hh"
 #include <array>
 #include <vector>
+#include <tuple>
+#include <G4ThreeVector.hh>
 
 class G4Event;
 class SLCJRunAction;
@@ -36,16 +38,16 @@ public:
 	void BeginOfEventAction(const G4Event*);
 	void EndOfEventAction(const G4Event*);
 	void addEdep(G4double Edep, G4double x, G4double y, G4double z);
-	void add_E_i(G4int nCrystal, G4double edep);
+	void addGeantinoPosition(G4String vol, G4ThreeVector pos);
 
 private:
 	SLCJRunAction* runAction;
 	G4int Range;
 
+	std::vector<std::pair<G4String, G4ThreeVector>> geantinoPositionVector;
+
 	std::vector<std::array<G4double, 4>>
 		EnergyDeposit;
-	std::array<G4double, 20>
-		TotalEnergyDepositCrystal = { 0 };
 };
 
 #endif

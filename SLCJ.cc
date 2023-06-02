@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
 	std::string
 		physicsListName = "emlivermore";
 	G4int
-		numberOfEvent = 1000000;
+		numberOfEvent = 100000;
 
 	auto start = std::chrono::high_resolution_clock::now();
 
@@ -175,12 +175,11 @@ int main(int argc, char** argv) {
 			break;
 		}
 	}
-	//std::filesystem::create_directory(runDirectoryPath);
+	std::filesystem::create_directory(runDirectoryPath);
 	SLCJdetector->saveDetails(runDirectoryPath);
 	SLCJgun->setRunPath(runDirectoryPath);
 
 	G4UImanager* UI = G4UImanager::GetUIpointer();
-	UI->ApplyCommand("/control/execute vis.mac");
 
 	// create paths to simulation data files
 	auto partialFileName = std::format("event_{}_",
@@ -193,11 +192,13 @@ int main(int argc, char** argv) {
 	// start a run
 	checkpoint;
 	SLCJgun->getEnergy() = energy; //set energy for each run
-	//runManager->BeamOn(numberOfEvent);
+	runManager->BeamOn(numberOfEvent);
 
 	auto stop = std::chrono::high_resolution_clock::now();
 	std::cout << double((stop - start).count()) / 1e9 << '\n';
+	std::cout << runDirectoryPath << '\n';
 	// job termination
+	//UI->ApplyCommand("/control/execute vis.mac");
 	return 0;
 }
 

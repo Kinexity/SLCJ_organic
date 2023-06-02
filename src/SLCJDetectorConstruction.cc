@@ -609,8 +609,12 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 
 	// Create a logical volume for mainBodySolid
 	G4LogicalVolume* cellsLogical = new G4LogicalVolume(cellsSolid, water, "cellsLogical");
+	G4LogicalVolume* boxLogical = new G4LogicalVolume(cellsBaseSolid, water, "boxLogical");
 
-	G4VPhysicalVolume* cellsPhysical = new G4PVPlacement(nullptr, -vertexOffset - G4ThreeVector(0,0,0)*mm, cellsLogical, "cellsPhysical", logicWorld, false, 0);
+	G4VPhysicalVolume* cellsPhysical = new G4PVPlacement(nullptr, -vertexOffset - G4ThreeVector(0, 0, 0) * mm, cellsLogical, "cellsPhysical", logicWorld, false, 0);
+	
+	
+	G4VPhysicalVolume* boxPhysical = new G4PVPlacement(rotation, -vertexOffset - G4ThreeVector(0,0,0)*mm, boxLogical, "boxTest", logicWorld, false, 0);
 	// Construct the field creator - this will register the field it creates
 	//F02ElectricFieldSetup* fieldSetup = new F02ElectricFieldSetup();
 
@@ -659,10 +663,10 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	//SLCJLogicalVolume->SetVisAttributes(G4VisAttributes::GetInvisible());
 	//activeVolumeLogical->SetVisAttributes(G4VisAttributes::GetInvisible());
 	//wallsLogical->SetVisAttributes(Att_pale_yellow);
-	mainBodyInternalLogical->SetVisAttributes(Att_light_blue);
-	mainBodyExternalLogical->SetVisAttributes(Att_pale_yellow);
-	capLogical->SetVisAttributes(Att_green);
-	cellsLogical->SetVisAttributes(Att_red);
+	//mainBodyInternalLogical->SetVisAttributes(Att_light_blue);
+	//mainBodyExternalLogical->SetVisAttributes(Att_pale_yellow);
+	//capLogical->SetVisAttributes(Att_green);
+	//cellsLogical->SetVisAttributes(Att_red);
 
 	//
 	// always return the physical World
@@ -687,6 +691,7 @@ void SLCJDetectorConstruction::saveDetails(std::filesystem::path p) {
 	// Loop over all the physical volumes
 	auto& physicalVolumeStore = *G4PhysicalVolumeStore::GetInstance();
 	for (const auto& physicalVolume : physicalVolumeStore) {
+		std::cout << physicalVolume->GetObjectTranslation() << _endl_;
 		const auto& material = *physicalVolume->GetLogicalVolume()->GetMaterial();
 		const auto& shape = *physicalVolume->GetLogicalVolume()->GetSolid();
 		outfile << std::format("{},{},{}\n",

@@ -86,7 +86,7 @@ SLCJPrimaryGeneratorAction::SLCJPrimaryGeneratorAction(SLCJRunAction* RunAct)
 	/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	electron = particleTable->FindParticle(particleName = "electron");
-
+	geantino = particleTable->FindParticle(particleName = "geantino");
 }
 
 
@@ -95,22 +95,23 @@ void SLCJPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 {
 
 	/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/*
+	///*
 	//Geantino for geometry checking
 
 	// particle definitions
-	G4ParticleTable particleTable = G4ParticleTable::GetParticleTable();
+	G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
 	G4String particleName;
 
 	particleGun->SetParticleDefinition(particleTable->FindParticle(particleName = "geantino"));
-	particleGun->SetParticleEnergy(1.0  GeV);
+	particleGun->SetParticlePosition(G4ThreeVector(0, 4, 1) * cm);
+	particleGun->SetParticleEnergy(1.0 * GeV);
 	particleGun->SetParticleMomentumDirection(G4RandomDirection());
 
 	particleGun->GeneratePrimaryVertex(anEvent);
-	*/
+	//*/
 	/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//Simulation of physical particles
-
+	/*
 	x = 0.0 * mm;
 	y = 0.0 * mm;
 	z = 0.0 * mm;
@@ -126,6 +127,7 @@ void SLCJPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	particleGun->SetParticleMomentumDirection(momentumDirection);
 	particleGun->SetParticleEnergy(E);
 	particleGun->GeneratePrimaryVertex(anEvent);
+	*/
 }
 
 void SLCJPrimaryGeneratorAction::setRunPath(std::filesystem::path runPath) {

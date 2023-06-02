@@ -36,11 +36,17 @@ void SLCJSteppingAction::UserSteppingAction(const G4Step* aStep)
 
 	G4double edep = aStep->GetTotalEnergyDeposit();
 
-	G4TouchableHandle touch = aStep->GetPreStepPoint()->GetTouchableHandle();
-	const std::string currentVolumeName = touch->GetVolume()->GetLogicalVolume()->GetName();
+	G4StepPoint* prePoint = aStep->GetPreStepPoint();
+	G4StepPoint* postPoint = aStep->GetPostStepPoint();
+	G4TouchableHandle touch = prePoint->GetTouchableHandle();
+	const std::string currentVolumeName = touch->GetVolume()->GetName();
+	const std::string currentMaterialName = touch->GetVolume()->GetLogicalVolume()->GetMaterial()->GetName();
+	const G4VProcess* process = postPoint->GetProcessDefinedStep();
+	std::string processName = process->GetProcessName();
 
 	G4double EdepStep;
 	G4int begin;
+	//std::cout << currentVolumeName << '\t' << processName << '\n';
 
 	G4String nameP = aStep->GetTrack()->GetDefinition()->GetParticleName();
 
@@ -65,10 +71,12 @@ void SLCJSteppingAction::UserSteppingAction(const G4Step* aStep)
 	//	//G4cout<<edep/keV<<"    "<<x/mm<<"    "<<y/mm<<"    "<<z/mm<<G4endl;
 	//}
 
+	eventAction->addGeantinoPosition(currentVolumeName, (prePoint->GetPosition() + postPoint->GetPosition()) / 2);
+
 	if (edep > 0.0 && currentVolumeName == "organicMaterialLogical") {
 
 		G4int nCrystal = touch->GetCopyNumber(1); //N will be the number of levels up, we have to check it to pickup the index of CeBr3 crystal
-		eventAction->add_E_i(nCrystal, edep / keV);
+		//eventAction->add_E_i(nCrystal, edep / keV);
 	}
 
 }
