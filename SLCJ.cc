@@ -95,9 +95,7 @@ int main(int argc, char** argv) {
 	if (argc > 1) {
 		numberOfEvent = std::stoi(argv[1]);
 		foodVolume = std::stod(argv[2]) * cm;
-		physicsListName = argv[3];
-		cutValue = std::stod(argv[4]) * mm;
-		skipIfDataExists = std::stoi(argv[5]);
+		skipIfDataExists = std::stoi(argv[3]);
 	}
 
 	// Choose the random engine and initialize
