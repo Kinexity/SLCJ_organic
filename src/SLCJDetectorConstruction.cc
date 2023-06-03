@@ -39,6 +39,7 @@
 #include <tuple>
 #include <set>
 #include <boost/math/tools/roots.hpp>
+#include <functional>
 
 #include "G4IntersectionSolid.hh"
 #include "G4IntersectionSolid.hh"
@@ -76,261 +77,21 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	G4String name, symbol;             //a=mass of a mole;
 	G4double a, z, density;            //z=mean number of protons;  
 	G4int ncomponents, natoms;
-	G4double fractionmass;
-	G4double abundance;
-	G4State state;
-	G4double pressure;
-	G4double temperature;
 
-	G4int iz, n;                       //iz=number of protons  in an isotope; 
- //                                      // n=number of nucleons in an isotope;
 
- //
- // define Elements
- //
+	//
+	// define Elements
+	//
 
-   // H
+	  // H
 	G4Element* H = nistManager->FindOrBuildElement("H");
-
-	// He
-	G4Element* He = nistManager->FindOrBuildElement("He");
-
-	// O
-	G4Element* O = nistManager->FindOrBuildElement("O");
-
-	// B
-	G4Element* B = nistManager->FindOrBuildElement("B");
-
-	// Al
-	G4Element* Al = nistManager->FindOrBuildElement("Al");
 
 	// C
 	G4Element* C = nistManager->FindOrBuildElement("C");
 
-	// Si
-	G4Element* Si = nistManager->FindOrBuildElement("Si");
-
-	// K
-	G4Element* K = nistManager->FindOrBuildElement("K");
-
-	// Cr
-	G4Element* Cr = nistManager->FindOrBuildElement("Cr");
-
-	// Fe
-	G4Element* Fe = nistManager->FindOrBuildElement("Fe");
-
-	// Ni
-	G4Element* Ni = nistManager->FindOrBuildElement("Ni");
-
-	// Sb
-	G4Element* Sb = nistManager->FindOrBuildElement("Sb");
-
-	// Ti
-	G4Element* Ti = nistManager->FindOrBuildElement("Ti");
-
-	// Ar
-	G4Element* Ar = nistManager->FindOrBuildElement("Ar");
-
-	// Cl
-	G4Element* Cl = nistManager->FindOrBuildElement("Cl");
-
-	//F
-	G4Element* F = nistManager->FindOrBuildElement("F");
-
-	// Na
-	G4Element* Na = nistManager->FindOrBuildElement("Na");
-
-	// Mg
-	G4Element* Mg = nistManager->FindOrBuildElement("Mg");
-
-	// Ca
-	G4Element* Ca = nistManager->FindOrBuildElement("Ca");
-
-	// Ce
-	G4Element* Ce = nistManager->FindOrBuildElement("Ce");
-
-	// La
-	G4Element* La = nistManager->FindOrBuildElement("La");
-
-	// Cu
-	G4Element* Cu = nistManager->FindOrBuildElement("Cu");
-
-	// Cs
-	G4Element* Cs = nistManager->FindOrBuildElement("Cs");
-
-	// N
-	G4Element* N = nistManager->FindOrBuildElement("N");
-
-	// Ge
-	G4Element* Ge = nistManager->FindOrBuildElement("Ge");
-
-	// Br
-	G4Element* Br = nistManager->FindOrBuildElement("Br");
-
 	//
 	// define simple materials
 	//
-
-	   // Al
-	density = 2.700 * g / cm3;
-	a = 26.98 * g / mole;
-	G4Material* Aluminium = new G4Material(name = "Aluminium", z = 13., a, density);
-
-	// Cu
-	density = 8.960 * g / cm3;
-	G4Material* Copper = new G4Material(name = "Copper", density, ncomponents = 1);
-	Copper->AddElement(Cu, natoms = 1);
-
-
-	// Stainless Steel
-	density = 8.00 * g / cm3;
-	G4Material* SST = new G4Material(name = "SST", density, ncomponents = 3);
-	SST->AddElement(Cr, fractionmass = 8.0 * perCent);
-	SST->AddElement(Fe, fractionmass = 74.0 * perCent);
-	SST->AddElement(Ni, fractionmass = 18.0 * perCent);
-
-	//Plastik  
-
-	G4Material* Plastik = new G4Material(name = "Plastik", density = 0.900 * g / cm3, ncomponents = 2);
-	Plastik->AddElement(C, natoms = 3);
-	Plastik->AddElement(H, natoms = 6);
-
-	//BC404 
-
-	G4Material* BC404 = new G4Material(name = "BC404", density = 1.032 * g / cm3, ncomponents = 2);
-	BC404->AddElement(C, natoms = 10);
-	BC404->AddElement(H, natoms = 11);
-
-	// PCB                  //Bakelit definition*****
-	density = 1.45 * g / cm3;
-	G4Material* PCB = new G4Material(name = "PCB", density, ncomponents = 3);
-	PCB->AddElement(C, natoms = 9);
-	PCB->AddElement(H, natoms = 9);
-	PCB->AddElement(O, natoms = 1);
-
-	// Peek
-	density = 1.26 * g / cm3;
-	G4Material* Peek = new G4Material(name = "Peek", density, ncomponents = 3);
-	Peek->AddElement(C, natoms = 19);
-	Peek->AddElement(H, natoms = 12);
-	Peek->AddElement(O, natoms = 3);
-
-	// Borosilicated glass
-	density = 2.30 * g / cm3;
-	G4Material* BGL = new G4Material(name = "BGL", density, ncomponents = 5);
-	BGL->AddElement(B, fractionmass = 5.3 * perCent);
-	BGL->AddElement(O, fractionmass = 54.9 * perCent);
-	BGL->AddElement(Al, fractionmass = 1.7 * perCent);
-	BGL->AddElement(Si, fractionmass = 32.7 * perCent);
-	BGL->AddElement(K, fractionmass = 5.4 * perCent);
-
-	// Mu-metal
-	density = 8.58 * g / cm3;
-	G4Material* MuMetal = new G4Material(name = "MuMetal", density, ncomponents = 4);
-	MuMetal->AddElement(Cr, fractionmass = 2.0 * perCent);
-	MuMetal->AddElement(Fe, fractionmass = 18.0 * perCent);
-	MuMetal->AddElement(Ni, fractionmass = 75.0 * perCent);
-	MuMetal->AddElement(Cu, fractionmass = 5.0 * perCent);
-
-	// Photocathode Material 
-	// (Bialkali K2CsSb)
-	density = 2.00 * g / cm3;
-	G4Material* K2CsSb = new G4Material(name = "K2CsSb", density, ncomponents = 3);
-	K2CsSb->AddElement(K, natoms = 2);
-	K2CsSb->AddElement(Cs, natoms = 1);
-	K2CsSb->AddElement(Sb, natoms = 1);
-
-	// Mylar
-	density = 1.39 * g / cm3;
-	G4Material* Mylar = new G4Material(name = "Mylar", density, ncomponents = 3);
-	Mylar->AddElement(C, natoms = 10);
-	Mylar->AddElement(H, natoms = 8);
-	Mylar->AddElement(O, natoms = 4);
-
-	//Fe2O3
-	density = 5.24 * g / cm3;
-	G4Material* Fe2O3 = new G4Material(name = "Fe2O3", density, ncomponents = 2);
-	Fe2O3->AddElement(Fe, natoms = 2);
-	Fe2O3->AddElement(O, natoms = 3);
-
-	//Magnetic media
-	density = 2.93 * g / cm3;
-	G4Material* MagneticMedia = new G4Material(name = "MagneticMedia", density, ncomponents = 2);
-	MagneticMedia->AddMaterial(Fe2O3, fractionmass = 40.0 * perCent);
-	MagneticMedia->AddMaterial(Mylar, fractionmass = 60.0 * perCent);
-
-	//EJ-200  for the beta plastic detector 
-	density = 1.023 * g / cm3;
-	G4Material* EJ200 = new G4Material(name = "EJ200", density, ncomponents = 2);
-	EJ200->AddElement(H, fractionmass = 0.0847);
-	EJ200->AddElement(C, fractionmass = 0.9153);
-
-	//EJ-510  for the reflective paint 
-	density = 0.013 * g / cm3;
-	G4Material* EJ510 = new G4Material(name = "EJ510", density, ncomponents = 4);
-	EJ510->AddElement(H, fractionmass = 0.0290);
-	EJ510->AddElement(C, fractionmass = 0.1719);
-	EJ510->AddElement(O, fractionmass = 0.3886);
-	EJ510->AddElement(Ti, fractionmass = 0.4105);
-
-	// ABS (Acrylonitrile Butadiene Styrene)
-	density = 1.04 * g / cm3;
-	G4Material* ABS = new G4Material(name = "ABS", density, ncomponents = 3);
-	ABS->AddElement(C, natoms = 15);
-	ABS->AddElement(H, natoms = 17);
-	ABS->AddElement(N, natoms = 1);
-
-	//POLYETHYLENE
-	//density = 0.94*g/cm3;
-	density = 0.4 * g / cm3;
-	G4Material* PE = new G4Material(name = "Polyethylene  ", density, ncomponents = 2);
-	PE->AddElement(H, fractionmass = 14.3711 * perCent);
-	PE->AddElement(C, fractionmass = 85.6289 * perCent);
-
-	//POLYVINYL CHLORIDE: PVC
-	density = 1.3 * g / cm3;
-	G4Material* PVC = new G4Material(name = "Polyvinylchloride  ", density, ncomponents = 3);
-	PVC->AddElement(H, fractionmass = 4.8380 * perCent);
-	PVC->AddElement(C, fractionmass = 38.4360 * perCent);
-	PVC->AddElement(Cl, fractionmass = 56.7260 * perCent);
-
-
-	G4Material* Silicon =
-		new G4Material("Silicon", z = 14., a = 28.09 * g / mole, density = 2.330 * g / cm3);
-
-
-	// Ge
-	density = 5.323 * g / cm3;
-	G4Material* Germanium = new G4Material(name = "Germanium", density, ncomponents = 1);
-	Germanium->AddElement(Ge, natoms = 1);
-
-	//polyethylene source 2017Bi
-	density = 1.05 * g / cm3;
-	G4Material* plastic_Bi = new G4Material(name = "plastic_Bi", density, ncomponents = 2);
-	plastic_Bi->AddElement(H, fractionmass = 0.498);
-	plastic_Bi->AddElement(C, fractionmass = 0.502);
-
-	////////////////////////////////////////////////////////////////////////////////////////////  
-	// Nitrogen
-	density = 1.25053 * mg / cm3;
-	G4Material* Nitrogen = new G4Material(name = "N2", density, ncomponents = 1, kStateGas, 296.15 * kelvin, 1 * atmosphere);
-	Nitrogen->AddElement(N, 2);
-
-	// Argon 
-	density = 1.7836 * mg / cm3;
-	G4Material* Argon = new G4Material(name = "Argon", density, ncomponents = 1, kStateGas, 296.15 * kelvin, 1 * atmosphere);
-	Argon->AddElement(Ar, 1);
-
-	// Helium 
-	density = 0.1786 * mg / cm3;
-	G4Material* Helium = new G4Material(name = "Helium", density, ncomponents = 1, kStateGas, 296.15 * kelvin, 1 * atmosphere);
-	Helium->AddElement(He, 1);
-
-	// CF4 
-	density = 3.72 * mg / cm3;
-	G4Material* CF4 = new G4Material(name = "CF4", density, ncomponents = 2, kStateGas, 296.15 * kelvin, 1 * atmosphere);
-	CF4->AddElement(C, 1);
-	CF4->AddElement(F, 4);
 
 	// Define the Polystyrene material
 	density = 1.06 * g / cm3;
@@ -346,7 +107,7 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	G4Material* Air = nistManager->FindOrBuildMaterial("G4_AIR");
 
 	//Water
-	G4Material* water = nistManager->FindOrBuildMaterial("G4_WATER");
+	G4Material* Water = nistManager->FindOrBuildMaterial("G4_WATER");
 
 	//<--------------------------------------------------------------------------------------------------------------------------------->
 	//<--------------------------------------------------------------World-------------------------------------------------------------->
@@ -356,11 +117,10 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 
 	G4Box* solidWorld = new G4Box("World", WorldSize / 2, WorldSize / 2, WorldSize / 2);
 	G4LogicalVolume* logicWorld = new G4LogicalVolume(solidWorld, Vacuum, "World");  //VACUUM
-	//G4LogicalVolume* logicWorld = new G4LogicalVolume(solidWorld,Air,"World");       //AIR
-	G4VPhysicalVolume* physiWorld = new G4PVPlacement(0, G4ThreeVector(), "World", logicWorld, NULL, false, 0);
+	G4VPhysicalVolume* physiWorld = new G4PVPlacement(0, G4ThreeVector(), "World", logicWorld, NULL, 0, true);
 
 
-	G4ThreeVector SLCJ_position = G4ThreeVector(0. * cm, 0. * cm, 0. * mm);
+	G4ThreeVector SLCJ_position = G4ThreeVector();
 
 
 	// Define the dimensions of the mother volume
@@ -372,7 +132,7 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	G4Box* solidmother_SLCJ = new G4Box("mother_SLCJ", motherVolumeX / 2, motherVolumeY / 2, motherVolumeZ / 2);
 	G4LogicalVolume* logicmother_SLCJ = new G4LogicalVolume(solidmother_SLCJ, Vacuum, "mother_SLCJ");
 	G4ThreeVector position_mother_SLCJ = G4ThreeVector(0. * mm, 0. * cm, 0. * mm);
-	G4VPhysicalVolume* physimother_SLCJ = new G4PVPlacement(0, position_mother_SLCJ, "mother_SLCJ", logicmother_SLCJ, physiWorld, false, 0);
+	G4VPhysicalVolume* physimother_SLCJ = new G4PVPlacement(0, position_mother_SLCJ, "mother_SLCJ", logicmother_SLCJ, physiWorld, 0, true);
 
 	//<--------------------------------------------------------------------------------------------------------------------------------->
 	//<--------------------------------------------------------Container geometry-------------------------------------------------------->
@@ -397,8 +157,7 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 		frontBottomDepth = 64 * mm,
 		frontBottomWidth = 27 * mm,
 		frontTopWidth = 22 * mm,
-		//frontWall_Height_ = 21 * mm,
-		frontMiddleHeight = 5 * mm,//height - frontWall_Height_ * std::sqrt(1 - std::pow(topProtrusion / height, 2));
+		frontMiddleHeight = 5 * mm,
 		frontMiddleWidth = 21.4 * mm;
 
 	// vertex offset to keep (0,0,0) point inside the container
@@ -408,7 +167,7 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 
 	// Define neck dimensions
 	G4double
-		neckLength = 22.0 * mm,
+		neckLength = 24.0 * mm,
 		neckOuterRadius = 10.0 * mm,
 		neckInnerRadius = neckOuterRadius - wallThickness;
 
@@ -432,12 +191,6 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	// Create solid for cap main body
 	G4Tubs* capClosingSolid = new G4Tubs("capClosingSolid", 0, capInnerRadius, wallThickness / 2.0, 0.0, CLHEP::twopi);
 
-	// Create solid for cap narrowing
-	G4Cons* capNarrowingSolid = new G4Cons("capNarrowingSolid", 0.0, capInnerRadius, 0.0, capNarrowingInnerRadius, capNarrowingHeight / 2.0, 0.0, CLHEP::twopi);
-
-	// Create union solid for cap
-	G4UnionSolid* capOpenSolid = new G4UnionSolid("capOpenSolid", capBodySolid, capNarrowingSolid, 0, G4ThreeVector(0.0, 0.0, capHeight / 2.0 - capNarrowingHeight / 2.0));
-
 	// Create union solid for cap
 	G4UnionSolid* capSolid = new G4UnionSolid("capSolid", capBodySolid, capClosingSolid, 0, G4ThreeVector(0.0, 0.0, capHeight / 2 - wallThickness / 2.0));
 
@@ -457,12 +210,12 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	neckRotation->rotateX(90 * deg + neckAngle);
 	G4RotationMatrix* capRotation = new G4RotationMatrix();
 	capRotation->rotateX(-90 * deg + neckAngle);
-	G4ThreeVector neckTranslation(0, topEdgeLenght + neckLength / 2 - neckOuterRadius * neckAngleSine + 3 * mm, frontMiddleHeight + (height - frontMiddleHeight) / 2 + 3 * mm);
-	G4ThreeVector capTranslation(0, topEdgeLenght + neckLength / 2 - neckOuterRadius * neckAngleSine - 3 * mm + (neckLength - capHeight + 2 * wallThickness) / 2 * std::cos(neckAngle), frontMiddleHeight + (height - frontMiddleHeight) / 2 + 3 * mm + (neckLength - capHeight + 2 * wallThickness) / 2 * neckAngleSine);
+	G4ThreeVector neckTranslation(0, topEdgeLenght + neckLength / 2 - neckOuterRadius * neckAngleSine - 4 * mm, (height + frontMiddleHeight) / 2 + 2 * mm);
+	G4ThreeVector capTranslation = neckTranslation + (neckLength - capHeight + 2 * wallThickness) / 2 * G4ThreeVector(0, std::cos(neckAngle), neckAngleSine);
 	G4Transform3D neckTransform(*neckRotation, neckTranslation + vertexOffset);
 	G4Transform3D capTransform(*capRotation, capTranslation);
 
-	G4VPhysicalVolume* capPhysical = new G4PVPlacement(capTransform, capLogical, "capPhysical", logicWorld, false, 0);
+	G4VPhysicalVolume* capPhysical = new G4PVPlacement(capTransform, "capPhysical", capLogical, physimother_SLCJ, false, 0);
 
 	//<--------------------------------------------------------External solid construction----------------------------------------------->
 
@@ -548,6 +301,10 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 		}
 		auto facets = spanFacets(vertices);
 		for (auto facet : facets) {
+			auto normal = facet->GetSurfaceNormal();
+			if (normal * facet->GetVertex(0) < 0) {
+				facet->SetSurfaceNormal(-normal);
+			}
 			externalContainerFacetsVector.push_back(facet);
 			mainBodyExternalSolid->AddFacet((G4VFacet*)facet);
 		}
@@ -567,12 +324,17 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	for (auto vertexNormals : mapVertexNormals) {
 		pointsTranslated[vertexNormals.first] = calculateInternalPoint(vertexNormals);
 	}
-	checkpoint;
+
 	G4TessellatedSolid* mainBodyInternalSolid = new G4TessellatedSolid("mainBodyInternalSolid");
 
 	for (auto facet : externalContainerFacetsVector) {
 		auto vertices = getVertices(facet);
-		mainBodyInternalSolid->AddFacet(new G4TriangularFacet(pointsTranslated[vertices[0]], pointsTranslated[vertices[1]], pointsTranslated[vertices[2]], ABSOLUTE));
+		auto newFacet = new G4TriangularFacet(pointsTranslated[vertices[0]], pointsTranslated[vertices[1]], pointsTranslated[vertices[2]], ABSOLUTE);
+		auto normal = newFacet->GetSurfaceNormal();
+		if (normal * newFacet->GetVertex(0) < 0) {
+			newFacet->SetSurfaceNormal(-normal);
+		}
+		mainBodyInternalSolid->AddFacet(newFacet);
 	}
 
 	// Set the solid as closed to ensure proper inside/outside determination
@@ -581,9 +343,8 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 
 	auto mainBodyExternalSolidWithNeck = new G4UnionSolid("mainBodyExternalSolidWithNeck", mainBodyExternalSolid, neckSolid, neckTransform);
 
-	auto mainBodyInternalSolidWithNeck = new G4UnionSolid("mainBodyExternalSolidWithNeck", mainBodyInternalSolid, neckInternalSolid, neckTransform);
+	auto mainBodyInternalSolidWithNeck = new G4UnionSolid("mainBodyInternalSolidWithNeck", mainBodyInternalSolid, neckInternalSolid, neckTransform);
 
-	//std::cout << "Volume: " << mainBodyExternalSolidWithNeck->GetCubicVolume() / cm3 << "cm3\n";
 
 	// Create a logical volume for mainBodySolid
 	G4LogicalVolume* mainBodyInternalLogical = new G4LogicalVolume(mainBodyInternalSolidWithNeck, Air, "mainBodyInternalLogical");
@@ -595,22 +356,55 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	G4ThreeVector translation = -vertexOffset;  // Set the translation vector as per your requirement
 	G4Transform3D transform(*rotation, translation);
 
-	G4VPhysicalVolume* mainBodyPhysical = new G4PVPlacement(rotation, -vertexOffset, mainBodyExternalLogical, "mainBodyExternalPhysical", logicWorld, false, 0);
+	G4VPhysicalVolume* mainBodyPhysical = new G4PVPlacement(rotation, -vertexOffset, "mainBodyExternalPhysical", mainBodyExternalLogical, physimother_SLCJ, false, 0);
 
-	G4VPhysicalVolume* mainBodyInternalPhysical = new G4PVPlacement(rotation, G4ThreeVector(), mainBodyInternalLogical, "mainBodyInternalPhysical", mainBodyExternalLogical, false, 0);
+	G4ThreeVector mainBodyInternalPosition(0, 0, 0);
+	G4VPhysicalVolume* mainBodyInternalPhysical = new G4PVPlacement(rotation, mainBodyInternalPosition, "mainBodyInternalPhysical", mainBodyInternalLogical, mainBodyPhysical, false, 0);
 
 	//<--------------------------------------------------------Cells and food construction----------------------------------------------->
 
 	const G4double cellsLayerThickness = 2 * um;
+	G4double foodHeight = 3 * mm; //initial value
 
 	auto cellsBaseSolid = new G4Box("cellsBaseSolid", topEdgeWidth / 2, topEdgeLenght / 2, cellsLayerThickness / 2);
 
-	auto cellsSolid = new G4UnionSolid("cellsSolid", mainBodyInternalSolidWithNeck, cellsBaseSolid, nullptr, G4ThreeVector(0, 0, -2*mm));
+	G4ThreeVector cellsSolidPositionOffset = G4ThreeVector(0, 0, cellsLayerThickness / 2 - 1 * mm);
 
-	// Create a logical volume for mainBodySolid
-	G4LogicalVolume* cellsLogical = new G4LogicalVolume(cellsSolid, water, "cellsLogical");
+	auto cellsSolid = new G4IntersectionSolid("cellsSolid", mainBodyInternalSolidWithNeck, cellsBaseSolid, nullptr, cellsSolidPositionOffset);
 
-	G4VPhysicalVolume* cellsPhysical = new G4PVPlacement(nullptr, -vertexOffset - G4ThreeVector(0,0,0)*mm, cellsLogical, "cellsPhysical", logicWorld, false, 0);
+	// food height -> food volume function
+	std::function fn = [&](G4double fHeight)->G4double {
+		G4ThreeVector foodSolidPositionOffset = cellsSolidPositionOffset + G4ThreeVector(0, 0, cellsLayerThickness / 2 + fHeight / 2);
+		std::unique_ptr<G4Box> foodBaseSolid = std::make_unique<G4Box>("foodBaseSolid", topEdgeWidth / 2, topEdgeLenght / 2, fHeight / 2);
+		std::unique_ptr<G4IntersectionSolid> foodSolid = std::make_unique<G4IntersectionSolid>("cellsSolid", mainBodyInternalSolidWithNeck, foodBaseSolid.get(), nullptr, foodSolidPositionOffset);
+		return foodVolume - foodSolid->GetCubicVolume();
+		};
+
+	// approximate food height to get expected food volume
+	foodHeight = boost::math::tools::bisect(fn, 2 * mm, 4 * mm, boost::math::tools::eps_tolerance<G4double>(10)).second;
+
+	G4ThreeVector foodSolidPositionOffset = cellsSolidPositionOffset + G4ThreeVector(0, 0, cellsLayerThickness / 2 + foodHeight / 2);
+
+	auto foodBaseSolid = new G4Box("foodBaseSolid", topEdgeWidth / 2, topEdgeLenght / 2, foodHeight / 2);
+
+	auto foodSolid = new G4IntersectionSolid("cellsSolid", mainBodyInternalSolidWithNeck, foodBaseSolid, nullptr, foodSolidPositionOffset);
+
+	//std::cout << "Cells surface area: " << cellsSolid->GetCubicVolume() / cellsLayerThickness / cm2 << "cm^2\n";
+	std::cout << std::format("Food height: {} mm\nFood volume: {} cm^3\n", foodHeight / mm, foodSolid->GetCubicVolume() / cm3);
+
+	// logical volume for cellsSolid
+	G4LogicalVolume* cellsLogical = new G4LogicalVolume(cellsSolid, Water, "cellsLogical");
+
+	G4LogicalVolume* foodLogical = new G4LogicalVolume(foodSolid, Water, "foodLogical");
+
+	G4VPhysicalVolume* cellsPhysical = new G4PVPlacement(rotation, G4ThreeVector(0, 0, 0) * mm, "cellsPhysical", cellsLogical, mainBodyInternalPhysical, false, 0);
+
+	G4VPhysicalVolume* foodPhysical = new G4PVPlacement(rotation, G4ThreeVector(0, 0, 0) * mm, "foodPhysical", foodLogical, mainBodyInternalPhysical, false, 0);
+
+
+
+
+
 	// Construct the field creator - this will register the field it creates
 	//F02ElectricFieldSetup* fieldSetup = new F02ElectricFieldSetup();
 
@@ -663,6 +457,7 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	mainBodyExternalLogical->SetVisAttributes(Att_pale_yellow);
 	capLogical->SetVisAttributes(Att_green);
 	cellsLogical->SetVisAttributes(Att_red);
+	//boxLogical->SetVisAttributes(Att_light_grey);
 
 	//
 	// always return the physical World

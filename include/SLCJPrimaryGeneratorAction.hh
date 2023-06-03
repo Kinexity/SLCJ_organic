@@ -40,7 +40,9 @@ private:
 	G4double E, x, y, z;
 	G4double fieldDiameter = 10 * cm;
 
-	G4ParticleDefinition* electron;
+	G4ParticleDefinition
+		*electron,
+		*geantino;
 
 	std::array<G4ParticleDefinition*, 4> particleDefinitions;
 };

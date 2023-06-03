@@ -22,6 +22,8 @@
 #include "iomanip"
 #include "Randomize.hh"
 #include "time.h"
+#include <set>
+#include <map>
 
 
 #include "G4SystemOfUnits.hh"
@@ -46,6 +48,7 @@ void SLCJRunAction::BeginOfRunAction(const G4Run*)
 	//eventStepsDepositFile.open(eventStepsDepositFilePath.string() + ".csv", std::ios_base::out | std::ios_base::trunc);
 	eventTotalDepositFileBinary.open(eventTotalDepositFilePath.string() + ".bin", std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
 	//eventStepsDepositFileBinary.open(eventStepsDepositFilePath.string() + ".bin", std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+	file.open("geantino.txt", std::ios_base::out | std::ios_base::trunc);
 	//Start CPU timer
 	timer->Start();
 	eventIndex = 0;
@@ -58,6 +61,26 @@ void SLCJRunAction::EndOfRunAction(const G4Run*)
 	//eventStepsDepositFile.close();
 	eventTotalDepositFileBinary.close();
 	//eventStepsDepositFileBinary.close();
+	{
+		std::set<G4String> vols;
+		for (auto [vol, pos] : geantinoPosGlobal) {
+			vols.insert(vol);
+		}
+		std::map<G4String, std::array<int, 3>> vol_colours;
+		int i = 0;
+		//std::cout << vols.size() << '\n';
+		for (auto vol : vols) {
+			//std::cout << vol << '\n';
+			vol_colours[vol] = { 255 * (i % 2), 255 * (i / 2 % 2), 255 * (i / 4 % 2) };
+			std::cout << vol << '\t' << G4ThreeVector(255 * (i % 2), 255 * (i / 2 % 2), 255 * (i / 4 % 2)) << '\n';
+			i++;
+		}
+		for (auto [vol, pos] : geantinoPosGlobal) {
+			auto colour = vol_colours[vol];
+			file << std::format("{}\t{}\t{}\t{}\t{}\t{}\n", pos.getX(), pos.getY(), pos.getZ(), colour[0], colour[1], colour[2]);
+		}
+	}
+	file.close();
 	//Stop timer and get CPU time
 	timer->Stop();
 	G4double cputime = timer->GetRealElapsed();
@@ -85,6 +108,12 @@ void SLCJRunAction::fillOut(std::vector<std::array<G4double, 4>>& EnergyDeposit,
 	eventIndex++;
 	if (eventIndex % 10000 == 0) {
 		std::cout << eventIndex << '\n';
+	}
+}
+
+void SLCJRunAction::fillOut(std::vector<std::pair<G4String, G4ThreeVector>>& geantinoPos) {
+	for (auto temp : geantinoPos) {
+		geantinoPosGlobal.push_back(temp);
 	}
 }
 

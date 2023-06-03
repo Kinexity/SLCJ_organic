@@ -328,11 +328,6 @@ G4ThreeVector calculateInternalPoint(std::tuple<G4ThreeVector, std::array<G4Thre
 	// Calculate the determinant of the matrix formed by the normal vectors
 	double det = normals[0].dot(normals[1].cross(normals[2]));
 
-	// Check if the determinant is close to zero, indicating that the planes are parallel or nearly parallel
-	//if (std::fabs(det) < tolerance) {
-	//	throw std::runtime_error("The planes are parallel or nearly parallel, intersection cannot be calculated.");
-	//}
-
 	// Get the distance from the origin to each plane
 	double d1 = normals[0].dot(vertex - 1 * mm * normals[0]);
 	double d2 = normals[1].dot(vertex - 1 * mm * normals[1]);

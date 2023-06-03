@@ -39,9 +39,7 @@ SLCJEventAction::~SLCJEventAction()
 
 void SLCJEventAction::BeginOfEventAction(const G4Event*) {
 	EnergyDeposit.clear();
-	for (auto& elem : TotalEnergyDepositCrystal) {
-		elem = 0;
-	}
+	geantinoPositionVector.clear();
 }
 
 void SLCJEventAction::EndOfEventAction(const G4Event* evt)
@@ -53,13 +51,13 @@ void SLCJEventAction::EndOfEventAction(const G4Event* evt)
 
 	evt->GetTrajectoryContainer()->GetVector();
 
-	runAction->fillOut(EnergyDeposit, TotalEnergyDepositCrystal);
+	//runAction->fillOut(EnergyDeposit, TotalEnergyDepositCrystal);
+	runAction->fillOut(geantinoPositionVector);
 
 }
 
-void SLCJEventAction::add_E_i(G4int nCrystal, G4double edep)
-{
-	TotalEnergyDepositCrystal[nCrystal] += edep; //we have to initialize this variable at the beginning of the EventAction
+void SLCJEventAction::addGeantinoPosition(G4String vol, G4ThreeVector pos) {
+	geantinoPositionVector.emplace_back(vol, pos);
 }
 
 void SLCJEventAction::addEdep(G4double Edep, G4double x, G4double y, G4double z) {

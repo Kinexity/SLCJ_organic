@@ -27,6 +27,7 @@
 #include <array>
 #include <filesystem>
 #include "G4Timer.hh"
+#include <G4ThreeVector.hh>
 
 class G4Run;
 
@@ -44,6 +45,7 @@ class SLCJRunAction : public G4UserRunAction
 
 
     void fillOut(std::vector<std::array<G4double, 4>>& EnergyDeposit, std::array<G4double, 20>& EnergyGammaCrystals);
+    void fillOut(std::vector<std::pair<G4String, G4ThreeVector>>& geantinoPos);
     
     
     void setEventFilePath(std::filesystem::path totalP, std::filesystem::path stepsP);
@@ -62,6 +64,10 @@ private:
     std::filesystem::path 
         eventTotalDepositFilePath,
         eventStepsDepositFilePath;
+
+    std::fstream file;
+
+    std::vector<std::pair<G4String, G4ThreeVector>> geantinoPosGlobal;
 };
 
 #endif

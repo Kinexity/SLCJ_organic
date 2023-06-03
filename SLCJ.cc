@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
 	std::string
 		physicsListName = "emlivermore";
 	G4int
-		numberOfEvent = 1000000;
+		numberOfEvent = 100000;
 
 	auto start = std::chrono::high_resolution_clock::now();
 
@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
 		std::cout << "Set correct home directory!" << _endl_;
 		exit(1);
 	}
-	auto resultsDirectoryPath = directory / "results_TPC";
+	auto resultsDirectoryPath = directory / "results_SLCJ";
 	if (!std::filesystem::exists(resultsDirectoryPath)) {
 		std::filesystem::create_directory(resultsDirectoryPath);
 	}
@@ -175,12 +175,16 @@ int main(int argc, char** argv) {
 			break;
 		}
 	}
-	//std::filesystem::create_directory(runDirectoryPath);
+	std::filesystem::create_directory(runDirectoryPath);
 	SLCJdetector->saveDetails(runDirectoryPath);
 	SLCJgun->setRunPath(runDirectoryPath);
 
-	G4UImanager* UI = G4UImanager::GetUIpointer();
-	UI->ApplyCommand("/control/execute vis.mac");
+	G4UImanager* UI = G4UImanager::GetUIpointer(); 
+	UI->ApplyCommand("/run/verbose 0");      // Run level
+	UI->ApplyCommand("/event/verbose 0");    // Event generation level
+	UI->ApplyCommand("/tracking/verbose 0"); // Tracking level
+	UI->ApplyCommand("/process/verbose 0");  // Physics processes level
+	UI->ApplyCommand("/geometry/verbose 0"); // Geometry level
 
 	// create paths to simulation data files
 	auto partialFileName = std::format("event_{}_",
@@ -193,12 +197,13 @@ int main(int argc, char** argv) {
 	// start a run
 	checkpoint;
 	SLCJgun->getEnergy() = energy; //set energy for each run
-	//runManager->BeamOn(numberOfEvent);
+	runManager->BeamOn(numberOfEvent);
 
 	auto stop = std::chrono::high_resolution_clock::now();
 	std::cout << double((stop - start).count()) / 1e9 << '\n';
+	std::cout << runDirectoryPath << '\n';
 	// job termination
+	// uncomment the following line if you want VRML visualisation (it won't work properly because of complex geometry)
+	//UI->ApplyCommand("/control/execute vis.mac");
 	return 0;
 }
-
-
