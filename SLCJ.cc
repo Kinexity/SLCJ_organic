@@ -87,7 +87,7 @@ int main(int argc, char** argv) {
 		std::cout << "Set correct home directory!" << _endl_;
 		exit(1);
 	}
-	auto resultsDirectoryPath = directory / "results_TPC";
+	auto resultsDirectoryPath = directory / "results_SLCJ";
 	if (!std::filesystem::exists(resultsDirectoryPath)) {
 		std::filesystem::create_directory(resultsDirectoryPath);
 	}
@@ -179,7 +179,12 @@ int main(int argc, char** argv) {
 	SLCJdetector->saveDetails(runDirectoryPath);
 	SLCJgun->setRunPath(runDirectoryPath);
 
-	G4UImanager* UI = G4UImanager::GetUIpointer();
+	G4UImanager* UI = G4UImanager::GetUIpointer(); 
+	UI->ApplyCommand("/run/verbose 0");      // Run level
+	UI->ApplyCommand("/event/verbose 0");    // Event generation level
+	UI->ApplyCommand("/tracking/verbose 0"); // Tracking level
+	UI->ApplyCommand("/process/verbose 0");  // Physics processes level
+	UI->ApplyCommand("/geometry/verbose 0"); // Geometry level
 
 	// create paths to simulation data files
 	auto partialFileName = std::format("event_{}_",
@@ -198,8 +203,7 @@ int main(int argc, char** argv) {
 	std::cout << double((stop - start).count()) / 1e9 << '\n';
 	std::cout << runDirectoryPath << '\n';
 	// job termination
+	// uncomment the following line if you want VRML visualisation (it won't work properly because of complex geometry)
 	//UI->ApplyCommand("/control/execute vis.mac");
 	return 0;
 }
-
-

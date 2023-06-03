@@ -40,13 +40,14 @@ public:
 	~SLCJDetectorConstruction() = default;
 	G4VPhysicalVolume* Construct();
 	const G4double getFoodVolume();
+	// this function saves details of the simulation into a file - physical volumes, materials and elements
 	void saveDetails(std::filesystem::path p);
 private:
 	F02ElectricFieldSetup* fEmFieldSetup;
 	G4String              header1, header2, header3;
 	G4double T = 0., P = 0., E = 0., d = 0.;
 	
-	G4double foodVolume = 10 * cm3;
+	const G4double foodVolume = 10 * cm3;
 };
 
 #endif

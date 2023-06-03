@@ -71,7 +71,7 @@ void SLCJSteppingAction::UserSteppingAction(const G4Step* aStep)
 	//	//G4cout<<edep/keV<<"    "<<x/mm<<"    "<<y/mm<<"    "<<z/mm<<G4endl;
 	//}
 
-	eventAction->addGeantinoPosition(currentVolumeName, (prePoint->GetPosition() + postPoint->GetPosition()) / 2);
+	eventAction->addGeantinoPosition(currentVolumeName, postPoint->GetPosition());
 
 	if (edep > 0.0 && currentVolumeName == "organicMaterialLogical") {
 

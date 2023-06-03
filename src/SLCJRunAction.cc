@@ -72,6 +72,7 @@ void SLCJRunAction::EndOfRunAction(const G4Run*)
 		for (auto vol : vols) {
 			//std::cout << vol << '\n';
 			vol_colours[vol] = { 255 * (i % 2), 255 * (i / 2 % 2), 255 * (i / 4 % 2) };
+			std::cout << vol << '\t' << G4ThreeVector(255 * (i % 2), 255 * (i / 2 % 2), 255 * (i / 4 % 2)) << '\n';
 			i++;
 		}
 		for (auto [vol, pos] : geantinoPosGlobal) {

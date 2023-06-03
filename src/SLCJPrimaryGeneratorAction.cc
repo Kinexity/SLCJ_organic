@@ -102,10 +102,11 @@ void SLCJPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	G4ParticleTable* particleTable = G4ParticleTable::GetParticleTable();
 	G4String particleName;
 
-	particleGun->SetParticleDefinition(particleTable->FindParticle(particleName = "geantino"));
+	particleGun->SetParticleDefinition(geantino);
 	particleGun->SetParticlePosition(G4ThreeVector(0, 4, 1) * cm);
 	particleGun->SetParticleEnergy(1.0 * GeV);
 	particleGun->SetParticleMomentumDirection(G4RandomDirection());
+	//particleGun->SetParticleMomentumDirection(G4ThreeVector(0,0,-1));
 
 	particleGun->GeneratePrimaryVertex(anEvent);
 	//*/
