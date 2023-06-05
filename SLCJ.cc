@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
 	std::string
 		physicsListName = "emlivermore";
 	G4int
-		numberOfEvent = 100000;
+		numberOfEvent = 1;
 
 	auto start = std::chrono::high_resolution_clock::now();
 
@@ -94,8 +94,10 @@ int main(int argc, char** argv) {
 
 	if (argc > 1) {
 		numberOfEvent = std::stoi(argv[1]);
-		foodVolume = std::stod(argv[2]) * cm;
-		skipIfDataExists = std::stoi(argv[3]);
+		cutValue = std::stod(argv[2]) * mm;
+		foodVolume = std::stod(argv[3]) * cm3;
+		energy = std::stod(argv[4]) * MeV;
+		skipIfDataExists = std::stoi(argv[5]);
 	}
 
 	// Choose the random engine and initialize
@@ -155,12 +157,14 @@ int main(int argc, char** argv) {
 #endif
 	SLCJphysList->SetDefaultCutValue(cutValue);
 
-	G4String pname = "electron";
+	G4String pname = "e-";
 	std::string runDirectoryName;
 	std::filesystem::path runDirectoryPath;
-	std::string paramString = std::format("{}_{}mm",
+	std::string paramString = std::format("{}_{}mm_{}cm3_{}MeV",
 		SLCJphysList->getPhysicsListName(),
-		SLCJphysList->GetCutValue(pname) / mm);
+		SLCJphysList->GetCutValue(pname) / mm,
+		SLCJdetector->getFoodVolume() / cm3,
+		energy / MeV);
 	// find first free index to create data dump directory
 	for (int i = 0;; i++) {
 		runDirectoryName = std::format("event_{}_{}",
@@ -179,7 +183,7 @@ int main(int argc, char** argv) {
 	SLCJdetector->saveDetails(runDirectoryPath);
 	SLCJgun->setRunPath(runDirectoryPath);
 
-	G4UImanager* UI = G4UImanager::GetUIpointer(); 
+	G4UImanager* UI = G4UImanager::GetUIpointer();
 	UI->ApplyCommand("/run/verbose 0");      // Run level
 	UI->ApplyCommand("/event/verbose 0");    // Event generation level
 	UI->ApplyCommand("/tracking/verbose 0"); // Tracking level
@@ -189,11 +193,9 @@ int main(int argc, char** argv) {
 	// create paths to simulation data files
 	auto partialFileName = std::format("event_{}_",
 		paramString);
-	auto eventTotalDepositFileName = partialFileName + "totalDeposit";
-	auto eventStepsDepositFileName = partialFileName + "stepsDeposit";
-	auto eventTotalDepositFilePath = runDirectoryPath / eventTotalDepositFileName;
-	auto eventStepsDepositFilePath = runDirectoryPath / eventStepsDepositFileName;
-	SLCJrun->setEventFilePath(eventTotalDepositFilePath, eventStepsDepositFilePath);
+	auto eventEnergyDepositFileName = partialFileName + "energyDeposit.bin";
+	auto eventEnergyDepositFilePath = runDirectoryPath / eventEnergyDepositFileName;
+	SLCJrun->setEventFilePath(eventEnergyDepositFilePath);
 	// start a run
 	checkpoint;
 	SLCJgun->getEnergy() = energy; //set energy for each run

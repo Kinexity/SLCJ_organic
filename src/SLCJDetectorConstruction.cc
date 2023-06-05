@@ -113,9 +113,14 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	//<--------------------------------------------------------------World-------------------------------------------------------------->
 	//<--------------------------------------------------------------------------------------------------------------------------------->
 
-	G4double WorldSize = 100. * cm;
+	//G4double WorldSize = 20. * cm;
 
-	G4Box* solidWorld = new G4Box("World", WorldSize / 2, WorldSize / 2, WorldSize / 2);
+	// Define the dimensions of the mother volume
+	G4double WorldSizeX = 10 * cm;
+	G4double WorldSizeY = 20 * cm;
+	G4double WorldSizeZ = 10 * cm;
+
+	G4Box* solidWorld = new G4Box("World", WorldSizeX / 2, WorldSizeY / 2, WorldSizeZ / 2);
 	G4LogicalVolume* logicWorld = new G4LogicalVolume(solidWorld, Vacuum, "World");  //VACUUM
 	G4VPhysicalVolume* physiWorld = new G4PVPlacement(0, G4ThreeVector(), "World", logicWorld, NULL, 0, true);
 
@@ -124,9 +129,9 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 
 
 	// Define the dimensions of the mother volume
-	G4double motherVolumeX = 50 * cm;
-	G4double motherVolumeY = 50 * cm;
-	G4double motherVolumeZ = 50 * cm;
+	G4double motherVolumeX = 10 * cm;
+	G4double motherVolumeY = 20 * cm;
+	G4double motherVolumeZ = 10 * cm;
 
 	//Mother volumen
 	G4Box* solidmother_SLCJ = new G4Box("mother_SLCJ", motherVolumeX / 2, motherVolumeY / 2, motherVolumeZ / 2);

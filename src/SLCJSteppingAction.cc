@@ -46,37 +46,16 @@ void SLCJSteppingAction::UserSteppingAction(const G4Step* aStep)
 
 	G4double EdepStep;
 	G4int begin;
-	//std::cout << currentVolumeName << '\t' << processName << '\n';
 
 	G4String nameP = aStep->GetTrack()->GetDefinition()->GetParticleName();
 
-	//if (edep>0.0 & currentVolumeName == "GasSLCJ" & nameP=="alpha"){
-	//if (edep > 0.0 & currentVolumeName == "GasSLCJ") {
-	//
-	//	G4StepPoint* prePoint = aStep->GetPreStepPoint();
-	//	G4StepPoint* postPoint = aStep->GetPostStepPoint();
-	//
-	//	G4double x1 = prePoint->GetPosition().x();
-	//	G4double x2 = postPoint->GetPosition().x();
-	//	G4double y1 = prePoint->GetPosition().y();
-	//	G4double y2 = postPoint->GetPosition().y();
-	//	G4double z1 = prePoint->GetPosition().z();
-	//	G4double z2 = postPoint->GetPosition().z();
-	//
-	//	G4double x = x1 + G4UniformRand() * (x2 - x1);
-	//	G4double y = y1 + G4UniformRand() * (y2 - y1);
-	//	G4double z = z1 + G4UniformRand() * (z2 - z1);
-	//
-	//	eventAction->addEdep(edep / keV, x / mm, y / mm, z / mm);
-	//	//G4cout<<edep/keV<<"    "<<x/mm<<"    "<<y/mm<<"    "<<z/mm<<G4endl;
-	//}
 
-	eventAction->addGeantinoPosition(currentVolumeName, postPoint->GetPosition());
-
-	if (edep > 0.0 && currentVolumeName == "organicMaterialLogical") {
-
-		G4int nCrystal = touch->GetCopyNumber(1); //N will be the number of levels up, we have to check it to pickup the index of CeBr3 crystal
-		//eventAction->add_E_i(nCrystal, edep / keV);
+	if (edep > 0.0 && currentVolumeName == "cellsPhysical") {
+		auto prePos = prePoint->GetPosition();
+		auto postPos = postPoint->GetPosition();
+		auto deltaPos = postPos - prePos;
+		auto pos = prePos + G4UniformRand() * deltaPos; // position randomization simplified
+		eventAction->addEdep(edep / keV, pos.getX() / mm, pos.getY() / mm, pos.getZ() / mm);
 	}
 
 }

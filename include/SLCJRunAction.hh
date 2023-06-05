@@ -35,39 +35,33 @@ class G4Timer;
 
 class SLCJRunAction : public G4UserRunAction
 {
-  public:
-    SLCJRunAction();
-    ~SLCJRunAction() = default;
+public:
+	SLCJRunAction();
+	~SLCJRunAction() = default;
 
-  public:
-    void BeginOfRunAction(const G4Run*);
-    void EndOfRunAction(const G4Run*);
+public:
+	void BeginOfRunAction(const G4Run*);
+	void EndOfRunAction(const G4Run*);
+
+	void fillOut(std::vector<std::array<G4double, 4>>& energyDeps);
 
 
-    void fillOut(std::vector<std::array<G4double, 4>>& EnergyDeposit, std::array<G4double, 20>& EnergyGammaCrystals);
-    void fillOut(std::vector<std::pair<G4String, G4ThreeVector>>& geantinoPos);
-    
-    
-    void setEventFilePath(std::filesystem::path totalP, std::filesystem::path stepsP);
+	void setEventFilePath(std::filesystem::path energyP);
 private:
-   
-    std::unique_ptr<G4Timer> timer;
-    
-    std::fstream 
-        eventTotalDepositFile,
-        eventStepsDepositFile,
-        eventTotalDepositFileBinary,
-        eventStepsDepositFileBinary;
-   
-    uint32_t eventIndex;
 
-    std::filesystem::path 
-        eventTotalDepositFilePath,
-        eventStepsDepositFilePath;
+	std::unique_ptr<G4Timer> timer;
 
-    std::fstream file;
+	std::fstream
+		eventEnergyDepositFile;
 
-    std::vector<std::pair<G4String, G4ThreeVector>> geantinoPosGlobal;
+	uint32_t eventIndex;
+
+	std::filesystem::path
+		eventEnergyDepositFilePath;
+
+	std::fstream file;
+
+	std::vector<std::pair<G4String, G4ThreeVector>> geantinoPosGlobal;
 };
 
 #endif

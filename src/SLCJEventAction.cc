@@ -39,31 +39,23 @@ SLCJEventAction::~SLCJEventAction()
 
 void SLCJEventAction::BeginOfEventAction(const G4Event*) {
 	EnergyDeposit.clear();
-	geantinoPositionVector.clear();
 }
 
 void SLCJEventAction::EndOfEventAction(const G4Event* evt)
 {
-	/*
-	for(G4int i=0; i<RangeX; i++){
-	  if(EnergyDepositX[i]>0){G4cout<<"From event: "<<i<<" "<<EnergyDepositX[i]<<G4endl;}
-	}*/
 
 	evt->GetTrajectoryContainer()->GetVector();
 
-	//runAction->fillOut(EnergyDeposit, TotalEnergyDepositCrystal);
-	runAction->fillOut(geantinoPositionVector);
+	runAction->fillOut(EnergyDeposit);
 
-}
-
-void SLCJEventAction::addGeantinoPosition(G4String vol, G4ThreeVector pos) {
-	geantinoPositionVector.emplace_back(vol, pos);
+	eventCounter++;
+	if (eventCounter % 10000 == 0) {
+		std::cout << eventCounter << '\n';
+	}
 }
 
 void SLCJEventAction::addEdep(G4double Edep, G4double x, G4double y, G4double z) {
 	EnergyDeposit.push_back({ Edep, x, y, z });
-	//G4cout<<nstep<<G4endl;
-
 }
 
 
