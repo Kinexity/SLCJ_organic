@@ -78,7 +78,7 @@ int main(int argc, char** argv) {
 	std::string
 		physicsListName = "emlivermore";
 	G4int
-		numberOfEvent = 1;
+		numberOfEvent = 10000;
 
 	auto start = std::chrono::high_resolution_clock::now();
 

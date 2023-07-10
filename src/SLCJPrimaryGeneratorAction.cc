@@ -90,6 +90,7 @@ SLCJPrimaryGeneratorAction::SLCJPrimaryGeneratorAction(SLCJRunAction* RunAct)
 	geantino = particleTable->FindParticle(particleName = "geantino");
 }
 
+// random position with symmetry and uniformity - check before use, probably wrong
 G4ThreeVector GetRandomPositionInCircle2(double radius) {
 	double phi = G4UniformRand() * CLHEP::twopi;  // Random angle between 0 and 2*pi
 	double r = sqrt(G4UniformRand()) * radius;  // Random radius between 0 and radius
@@ -144,22 +145,22 @@ void SLCJPrimaryGeneratorAction::GeneratePrimaries(G4Event* anEvent)
 	/// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	//Simulation of physical particles
 	///*
-	x = 0.0 * mm;
-	y = 0.0 * mm;
-	z = 0.0 * mm;
+
+	// offset to put center of electron beam over the center of cell sample
+	G4ThreeVector initialPositionOffset(0, 3.5 * cm, 4 * cm);
+
+	auto particlePosition = GetRandomPositionInCircle(fieldDiameter / 2) + initialPositionOffset;
 
 	std::array tpl = { E / keV, x / mm, y / mm, z / mm };
 	metaFile.write((char*)tpl.data(), sizeof(tpl));
 
-	// offset to put center of electron beam over the center of cell sample
-	G4ThreeVector initialPositionOffset(0, 3.5 * cm, 4 * cm);
 	// -Z electron direction
 	G4ThreeVector momentumDirection(0, 0, -1);
 	particleGun->SetParticleDefinition(electron);
 
 	particleGun->SetParticlePosition(G4ThreeVector(x, y, z));
 	particleGun->SetParticleMomentumDirection(momentumDirection);
-	particleGun->SetParticlePosition(GetRandomPositionInCircle(fieldDiameter / 2) + initialPositionOffset);
+	particleGun->SetParticlePosition(particlePosition);
 	particleGun->SetParticleEnergy(E);
 	particleGun->GeneratePrimaryVertex(anEvent);
 	//*/

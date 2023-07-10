@@ -83,11 +83,17 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	// define Elements
 	//
 
-	  // H
+	// H
 	G4Element* H = nistManager->FindOrBuildElement("H");
 
 	// C
 	G4Element* C = nistManager->FindOrBuildElement("C");
+
+	// O
+	G4Element* O = nistManager->FindOrBuildElement("O");
+
+	// Ti
+	G4Element* Ti = nistManager->FindOrBuildElement("Ti");
 
 	//
 	// define simple materials
@@ -98,6 +104,23 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	G4Material* Polystyrene = new G4Material(name = "Polystyrene", density, ncomponents = 2);
 	Polystyrene->AddElement(C, 8);
 	Polystyrene->AddElement(H, 8);
+
+
+	// Define the PMMA material
+	density = 1.18 * g / cm3;
+	G4Material* PMMA = new G4Material(name = "PMMA", density, ncomponents = 3);
+	PMMA->AddElement(C, 5);
+	PMMA->AddElement(H, 8);
+	PMMA->AddElement(O, 2);
+
+
+	// Create the RW3 slab phantom material
+	density = 1.045 * g / cm3;
+	G4Material* RW3PhantomMaterial = new G4Material("RW3PhantomMaterial", density, 4);
+	RW3PhantomMaterial->AddElement(H, 7.59 * perCent);
+	RW3PhantomMaterial->AddElement(C, 90.41 * perCent);
+	RW3PhantomMaterial->AddElement(O, 0.80 * perCent);
+	RW3PhantomMaterial->AddElement(Ti, 1.2 * perCent);
 
 	//////////////////////////////////////////////////////////////////
 	//Vacuum
@@ -133,14 +156,14 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	G4double motherVolumeY = 20 * cm;
 	G4double motherVolumeZ = 10 * cm;
 
-	//Mother volumen
+	//Mother volume
 	G4Box* solidmother_SLCJ = new G4Box("mother_SLCJ", motherVolumeX / 2, motherVolumeY / 2, motherVolumeZ / 2);
 	G4LogicalVolume* logicmother_SLCJ = new G4LogicalVolume(solidmother_SLCJ, Vacuum, "mother_SLCJ");
 	G4ThreeVector position_mother_SLCJ = G4ThreeVector(0. * mm, 0. * cm, 0. * mm);
 	G4VPhysicalVolume* physimother_SLCJ = new G4PVPlacement(0, position_mother_SLCJ, "mother_SLCJ", logicmother_SLCJ, physiWorld, 0, true);
 
 	//<--------------------------------------------------------------------------------------------------------------------------------->
-	//<--------------------------------------------------------Container geometry-------------------------------------------------------->
+	//<--------------------------------------------------------Container geometry------------------------------------------------------->
 	//<--------------------------------------------------------------------------------------------------------------------------------->
 
 	// Define external dimensions and materials
@@ -383,7 +406,7 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 		std::unique_ptr<G4Box> foodBaseSolid = std::make_unique<G4Box>("foodBaseSolid", topEdgeWidth / 2, topEdgeLenght / 2, fHeight / 2);
 		std::unique_ptr<G4IntersectionSolid> foodSolid = std::make_unique<G4IntersectionSolid>("cellsSolid", mainBodyInternalSolidWithNeck, foodBaseSolid.get(), nullptr, foodSolidPositionOffset);
 		return foodVolume - foodSolid->GetCubicVolume();
-		};
+	};
 
 	// approximate food height to get expected food volume
 	foodHeight = boost::math::tools::bisect(fn, 2 * mm, 4 * mm, boost::math::tools::eps_tolerance<G4double>(10)).second;
@@ -406,14 +429,28 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 
 	G4VPhysicalVolume* foodPhysical = new G4PVPlacement(rotation, G4ThreeVector(0, 0, 0) * mm, "foodPhysical", foodLogical, mainBodyInternalPhysical, false, 0);
 
+	//<--------------------------------------------------------------------------------------------------------------------------------->
+	//<--------------------------------------------------Applicator and phantom geometry------------------------------------------------>
+	//<--------------------------------------------------------------------------------------------------------------------------------->
 
+	const G4double
+		topPhantomThickness = 0.5 * cm,
+		bottomPhantomThickness = 11.5 * cm,
+		applicatorLenght = 60 * cm,
+		applicatorDiameter = 10 * cm,
+		phantomSide = 12 * cm;
 
+	G4Tubs* applicatorSolid = new G4Tubs("applicatorSolid", 0.0, applicatorDiameter / 2, applicatorLenght / 2, 0.0, CLHEP::twopi);
 
+	G4LogicalVolume* applicatorLogicalVolume = new G4LogicalVolume(applicatorSolid, PMMA, "applicatorLogicalVolume");
 
-	// Construct the field creator - this will register the field it creates
-	//F02ElectricFieldSetup* fieldSetup = new F02ElectricFieldSetup();
+	G4Box* topPhantomSolid = new G4Box("BottomPhantomSolid", phantomSide / 2, phantomSide / 2, topPhantomThickness / 2);
 
+	G4LogicalVolume* topPhantomLogical = new G4LogicalVolume(topPhantomSolid, RW3PhantomMaterial, "topPhantomLogical");
 
+	G4Box* bottomPhantomSolid = new G4Box("BottomPhantomSolid", phantomSide / 2, phantomSide / 2, bottomPhantomThickness / 2);
+
+	G4LogicalVolume* bottomPhantomLogical = new G4LogicalVolume(bottomPhantomSolid, RW3PhantomMaterial, "bottomPhantomLogical");
 
 	//********************************************************************************************************************/
 
@@ -453,16 +490,10 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	//G4VisAttributes* Att_pale_yellow = new G4VisAttributes(G4Colour(255./255, 204./255, 102./255));
 
 
-
-	//SLCJLogicalVolume->SetVisAttributes(Att9);
-	//SLCJLogicalVolume->SetVisAttributes(G4VisAttributes::GetInvisible());
-	//activeVolumeLogical->SetVisAttributes(G4VisAttributes::GetInvisible());
-	//wallsLogical->SetVisAttributes(Att_pale_yellow);
 	mainBodyInternalLogical->SetVisAttributes(Att_light_blue);
 	mainBodyExternalLogical->SetVisAttributes(Att_pale_yellow);
 	capLogical->SetVisAttributes(Att_green);
 	cellsLogical->SetVisAttributes(Att_red);
-	//boxLogical->SetVisAttributes(Att_light_grey);
 
 	//
 	// always return the physical World
