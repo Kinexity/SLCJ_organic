@@ -58,6 +58,8 @@
 #include <algorithm>
 #include <numeric>
 
+#include <boost/program_options.hpp>
+
 inline std::string filename_string(std::string path_str) {
 	return path_str.substr(path_str.rfind("\\") + 1, path_str.size() - path_str.rfind("\\") - 1);
 };
@@ -65,12 +67,15 @@ inline std::string filename_string(std::string path_str) {
 #define _endl_ " (" << filename_string(__FILE__) << "; " << __LINE__ << ")" << '\n'
 #define checkpoint std::cout << "checkpoint" << _endl_
 
+namespace po = boost::program_options;
+
 
 int main(int argc, char** argv) {
 
 	bool
 		skipIfDataExists = false,
-		dataOverwrite = false;
+		dataOverwrite = false,
+		isGeantino = true;
 	G4double
 		foodVolume = 10 * cm3,
 		cutValue = 0.01 * mm,
@@ -78,9 +83,48 @@ int main(int argc, char** argv) {
 	std::string
 		physicsListName = "emlivermore";
 	G4int
-		numberOfEvent = 10000;
+		numberOfEvent = 1000000;
 
 	auto start = std::chrono::high_resolution_clock::now();
+
+	// Define options and their descriptions
+	po::options_description desc("Allowed options");
+	desc.add_options()
+		("skipIfDataExists", po::bool_switch(&skipIfDataExists), "Skip if data exists")
+		("dataOverwrite", po::bool_switch(&dataOverwrite), "Data overwrite")
+		("isGeantino", po::bool_switch(&isGeantino), "Is geantino")
+		("foodVolume", po::value<double>(&foodVolume), "Food volume")
+		("cutValue", po::value<double>(&cutValue), "Cut value")
+		("energy", po::value<double>(&energy), "Energy")
+		("physicsListName", po::value<std::string>(&physicsListName), "Physics list name")
+		("numberOfEvent", po::value<int>(&numberOfEvent), "Number of events");
+
+	// Parse command line arguments
+	po::variables_map vm;
+	po::store(po::parse_command_line(argc, argv, desc), vm);
+	po::notify(vm);
+
+	// apply units if necessery
+	if (vm.count("energy")) {
+		energy *= MeV;
+	}
+	if (vm.count("foodVolume")) {
+		foodVolume *= cm3;
+	}
+	if (vm.count("cutValue")) {
+		cutValue *= mm;
+	}
+
+	// Print the values
+	std::cout << "skipIfDataExists: " << std::boolalpha << skipIfDataExists << std::endl;
+	std::cout << "dataOverwrite: " << std::boolalpha << dataOverwrite << std::endl;
+	std::cout << "isGeantino: " << std::boolalpha << isGeantino << std::endl;
+	std::cout << "foodVolume: " << foodVolume / cm3 << std::endl;
+	std::cout << "cutValue: " << cutValue / mm << std::endl;
+	std::cout << "energy: " << energy / MeV << std::endl;
+	std::cout << "physicsListName: " << physicsListName << std::endl;
+	std::cout << "numberOfEvent: " << numberOfEvent << std::endl;
+
 
 	std::filesystem::path directory = std::filesystem::current_path();
 	if (!std::filesystem::exists(directory)) {
@@ -92,13 +136,6 @@ int main(int argc, char** argv) {
 		std::filesystem::create_directory(resultsDirectoryPath);
 	}
 
-	if (argc > 1) {
-		numberOfEvent = std::stoi(argv[1]);
-		cutValue = std::stod(argv[2]) * mm;
-		foodVolume = std::stod(argv[3]) * cm3;
-		energy = std::stod(argv[4]) * MeV;
-		skipIfDataExists = std::stoi(argv[5]);
-	}
 
 	// Choose the random engine and initialize
 	CLHEP::HepRandom::setTheEngine(new CLHEP::RanluxEngine);
@@ -130,7 +167,7 @@ int main(int argc, char** argv) {
 
 	checkpoint;
 	// set aditional user action classes
-	SLCJRunAction* SLCJrun = new SLCJRunAction;
+	SLCJRunAction* SLCJrun = new SLCJRunAction(isGeantino);
 	runManager->SetUserAction(SLCJrun);
 	SLCJEventAction* SLCJevent = new SLCJEventAction(SLCJrun);
 	runManager->SetUserAction(SLCJevent);
@@ -183,6 +220,7 @@ int main(int argc, char** argv) {
 	SLCJdetector->saveDetails(runDirectoryPath);
 	SLCJgun->setRunPath(runDirectoryPath);
 
+	// change verbosity here if needed
 	G4UImanager* UI = G4UImanager::GetUIpointer();
 	UI->ApplyCommand("/run/verbose 0");      // Run level
 	UI->ApplyCommand("/event/verbose 0");    // Event generation level

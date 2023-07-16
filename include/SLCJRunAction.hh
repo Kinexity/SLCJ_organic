@@ -36,7 +36,7 @@ class G4Timer;
 class SLCJRunAction : public G4UserRunAction
 {
 public:
-	SLCJRunAction();
+	SLCJRunAction(bool iG);
 	~SLCJRunAction() = default;
 
 public:
@@ -44,9 +44,11 @@ public:
 	void EndOfRunAction(const G4Run*);
 
 	void fillOut(std::vector<std::array<G4double, 4>>& energyDeps);
-
+	void fillOut(std::vector<std::pair<G4String, G4ThreeVector>>& geantinoPos);
 
 	void setEventFilePath(std::filesystem::path energyP);
+
+	bool getIsGeantino();
 private:
 
 	std::unique_ptr<G4Timer> timer;
@@ -62,6 +64,8 @@ private:
 	std::fstream file;
 
 	std::vector<std::pair<G4String, G4ThreeVector>> geantinoPosGlobal;
+
+	const bool isGeantino;
 };
 
 #endif

@@ -33,13 +33,18 @@
 using namespace std;
 
 
-SLCJRunAction::SLCJRunAction() {
+SLCJRunAction::SLCJRunAction(bool iG) : isGeantino(iG) {
 	timer = std::make_unique<G4Timer>();
 }
 
 void SLCJRunAction::BeginOfRunAction(const G4Run*) {
 
-	eventEnergyDepositFile.open(eventEnergyDepositFilePath, std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+	if (isGeantino) {
+		file.open("geantino.txt", std::ios_base::out | std::ios_base::trunc);
+	}
+	else {
+		eventEnergyDepositFile.open(eventEnergyDepositFilePath, std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
+	}
 
 	//Start CPU timer
 	timer->Start();
@@ -48,7 +53,29 @@ void SLCJRunAction::BeginOfRunAction(const G4Run*) {
 
 void SLCJRunAction::EndOfRunAction(const G4Run*)
 {
-	eventEnergyDepositFile.close();
+	if (isGeantino) {
+		std::set<G4String> vols;
+		for (auto [vol, pos] : geantinoPosGlobal) {
+			vols.insert(vol);
+		}
+		std::map<G4String, std::array<int, 3>> vol_colours;
+		int i = 0;
+		//std::cout << vols.size() << '\n';
+		for (auto vol : vols) {
+			//std::cout << vol << '\n';
+			vol_colours[vol] = { 255 * (i % 2), 255 * (i / 2 % 2), 255 * (i / 4 % 2) };
+			std::cout << vol << '\t' << G4ThreeVector(255 * (i % 2), 255 * (i / 2 % 2), 255 * (i / 4 % 2)) << '\n';
+			i++;
+		}
+		for (auto [vol, pos] : geantinoPosGlobal) {
+			auto colour = vol_colours[vol];
+			file << std::format("{}\t{}\t{}\t{}\t{}\t{}\n", pos.getX(), pos.getY(), pos.getZ(), colour[0], colour[1], colour[2]);
+		}
+		file.close();
+	}
+	else {
+		eventEnergyDepositFile.close();
+	}
 	//Stop timer and get CPU time
 	timer->Stop();
 	G4double cputime = timer->GetRealElapsed();
@@ -61,7 +88,17 @@ void SLCJRunAction::fillOut(std::vector<std::array<G4double, 4>>& energyDeps) {
 	eventEnergyDepositFile.write((char*)energyDeps.data(), energyDeps.size() * sizeof(std::array<G4double, 4>));
 }
 
+void SLCJRunAction::fillOut(std::vector<std::pair<G4String, G4ThreeVector>>& geantinoPos) {
+	for (auto temp : geantinoPos) {
+		geantinoPosGlobal.push_back(temp);
+	}
+}
+
 void SLCJRunAction::setEventFilePath(std::filesystem::path energyP) {
 	eventEnergyDepositFilePath = energyP;
 	std::cout << eventEnergyDepositFilePath << '\n';
+}
+
+bool SLCJRunAction::getIsGeantino() {
+	return isGeantino;
 }

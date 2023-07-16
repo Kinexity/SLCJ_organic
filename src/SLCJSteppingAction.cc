@@ -49,13 +49,17 @@ void SLCJSteppingAction::UserSteppingAction(const G4Step* aStep)
 
 	G4String nameP = aStep->GetTrack()->GetDefinition()->GetParticleName();
 
-
-	if (edep > 0.0 && currentVolumeName == "cellsPhysical") {
-		auto prePos = prePoint->GetPosition();
-		auto postPos = postPoint->GetPosition();
-		auto deltaPos = postPos - prePos;
-		auto pos = prePos + G4UniformRand() * deltaPos; // position randomization simplified
-		eventAction->addEdep(edep / keV, pos.getX() / mm, pos.getY() / mm, pos.getZ() / mm);
+	if (nameP == "geantino") {
+		eventAction->addGeantinoPosition(currentVolumeName, postPoint->GetPosition());
+	}
+	else {
+		if (edep > 0.0 && currentVolumeName == "cellsPhysical") {
+			auto prePos = prePoint->GetPosition();
+			auto postPos = postPoint->GetPosition();
+			auto deltaPos = postPos - prePos;
+			auto pos = prePos + G4UniformRand() * deltaPos; // position randomization simplified
+			eventAction->addEdep(edep / keV, pos.getX() / mm, pos.getY() / mm, pos.getZ() / mm);
+		}
 	}
 
 }

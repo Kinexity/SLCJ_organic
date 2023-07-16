@@ -39,14 +39,18 @@ SLCJEventAction::~SLCJEventAction()
 
 void SLCJEventAction::BeginOfEventAction(const G4Event*) {
 	EnergyDeposit.clear();
+	geantinoPositionVector.clear();
 }
 
 void SLCJEventAction::EndOfEventAction(const G4Event* evt)
 {
 
-	evt->GetTrajectoryContainer()->GetVector();
-
-	runAction->fillOut(EnergyDeposit);
+	if (runAction->getIsGeantino()) {
+		runAction->fillOut(geantinoPositionVector);
+	}
+	else {
+		runAction->fillOut(EnergyDeposit);
+	}
 
 	eventCounter++;
 	if (eventCounter % 10000 == 0) {
@@ -58,4 +62,6 @@ void SLCJEventAction::addEdep(G4double Edep, G4double x, G4double y, G4double z)
 	EnergyDeposit.push_back({ Edep, x, y, z });
 }
 
-
+void SLCJEventAction::addGeantinoPosition(G4String vol, G4ThreeVector pos) {
+	geantinoPositionVector.emplace_back(vol, pos);
+}

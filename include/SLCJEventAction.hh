@@ -34,10 +34,10 @@ public:
 	SLCJEventAction(SLCJRunAction*);
 	~SLCJEventAction();
 
-public:
 	void BeginOfEventAction(const G4Event*);
 	void EndOfEventAction(const G4Event*);
 	void addEdep(G4double Edep, G4double x, G4double y, G4double z);
+	void addGeantinoPosition(G4String vol, G4ThreeVector pos);
 
 private:
 	SLCJRunAction* runAction;

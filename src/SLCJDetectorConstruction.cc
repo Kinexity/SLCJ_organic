@@ -100,10 +100,7 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	//
 
 	// Define the Polystyrene material
-	density = 1.06 * g / cm3;
-	G4Material* Polystyrene = new G4Material(name = "Polystyrene", density, ncomponents = 2);
-	Polystyrene->AddElement(C, 8);
-	Polystyrene->AddElement(H, 8);
+	G4Material* Polystyrene = nistManager->FindOrBuildMaterial("G4_POLYSTYRENE");
 
 
 	// Define the PMMA material
@@ -139,9 +136,9 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	//G4double WorldSize = 20. * cm;
 
 	// Define the dimensions of the mother volume
-	G4double WorldSizeX = 10 * cm;
-	G4double WorldSizeY = 20 * cm;
-	G4double WorldSizeZ = 10 * cm;
+	G4double WorldSizeX = 15 * cm;
+	G4double WorldSizeY = 15 * cm;
+	G4double WorldSizeZ = 80 * cm;
 
 	G4Box* solidWorld = new G4Box("World", WorldSizeX / 2, WorldSizeY / 2, WorldSizeZ / 2);
 	G4LogicalVolume* logicWorld = new G4LogicalVolume(solidWorld, Vacuum, "World");  //VACUUM
@@ -152,15 +149,15 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 
 
 	// Define the dimensions of the mother volume
-	G4double motherVolumeX = 10 * cm;
-	G4double motherVolumeY = 20 * cm;
-	G4double motherVolumeZ = 10 * cm;
+	G4double motherVolumeX = 15 * cm;
+	G4double motherVolumeY = 15 * cm;
+	G4double motherVolumeZ = 80 * cm;
 
 	//Mother volume
-	G4Box* solidmother_SLCJ = new G4Box("mother_SLCJ", motherVolumeX / 2, motherVolumeY / 2, motherVolumeZ / 2);
-	G4LogicalVolume* logicmother_SLCJ = new G4LogicalVolume(solidmother_SLCJ, Vacuum, "mother_SLCJ");
+	G4Box* solidmother_SLCJ = new G4Box("motherSolidSLCJ", motherVolumeX / 2, motherVolumeY / 2, motherVolumeZ / 2);
+	G4LogicalVolume* logicmother_SLCJ = new G4LogicalVolume(solidmother_SLCJ, Air, "motherLogicalSLCJ");
 	G4ThreeVector position_mother_SLCJ = G4ThreeVector(0. * mm, 0. * cm, 0. * mm);
-	G4VPhysicalVolume* physimother_SLCJ = new G4PVPlacement(0, position_mother_SLCJ, "mother_SLCJ", logicmother_SLCJ, physiWorld, 0, true);
+	G4VPhysicalVolume* physimother_SLCJ = new G4PVPlacement(0, position_mother_SLCJ, "motherPhysicalSLCJ", logicmother_SLCJ, physiWorld, 0, true);
 
 	//<--------------------------------------------------------------------------------------------------------------------------------->
 	//<--------------------------------------------------------Container geometry------------------------------------------------------->
@@ -190,6 +187,12 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 
 	// vertex offset to keep (0,0,0) point inside the container
 	G4ThreeVector vertexOffset(0, -frontBottomDepth / 2, -2 * mm);
+
+	// bottle placement offset to keep electron beam centered around x=0,y=0
+	G4ThreeVector bottleOffset(0, -2.5 * cm, 0);
+
+	// offset for placing objects in mother SLCJ volume
+	G4ThreeVector motherPlacementOffset(0, 0, 11.5 * cm - (height + 72 * cm) / 2);
 
 	//<--------------------------------------------------------Bottle neck solid construction-------------------------------------------->
 
@@ -241,7 +244,7 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	G4ThreeVector neckTranslation(0, topEdgeLenght + neckLength / 2 - neckOuterRadius * neckAngleSine - 4 * mm, (height + frontMiddleHeight) / 2 + 2 * mm);
 	G4ThreeVector capTranslation = neckTranslation + (neckLength - capHeight + 2 * wallThickness) / 2 * G4ThreeVector(0, std::cos(neckAngle), neckAngleSine);
 	G4Transform3D neckTransform(*neckRotation, neckTranslation + vertexOffset);
-	G4Transform3D capTransform(*capRotation, capTranslation);
+	G4Transform3D capTransform(*capRotation, capTranslation + bottleOffset + motherPlacementOffset);
 
 	G4VPhysicalVolume* capPhysical = new G4PVPlacement(capTransform, "capPhysical", capLogical, physimother_SLCJ, false, 0);
 
@@ -384,10 +387,9 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 	G4ThreeVector translation = -vertexOffset;  // Set the translation vector as per your requirement
 	G4Transform3D transform(*rotation, translation);
 
-	G4VPhysicalVolume* mainBodyPhysical = new G4PVPlacement(rotation, -vertexOffset, "mainBodyExternalPhysical", mainBodyExternalLogical, physimother_SLCJ, false, 0);
+	G4VPhysicalVolume* mainBodyPhysical = new G4PVPlacement(rotation, -vertexOffset + bottleOffset + motherPlacementOffset, "mainBodyExternalPhysical", mainBodyExternalLogical, physimother_SLCJ, false, 0);
 
-	G4ThreeVector mainBodyInternalPosition(0, 0, 0);
-	G4VPhysicalVolume* mainBodyInternalPhysical = new G4PVPlacement(rotation, mainBodyInternalPosition, "mainBodyInternalPhysical", mainBodyInternalLogical, mainBodyPhysical, false, 0);
+	G4VPhysicalVolume* mainBodyInternalPhysical = new G4PVPlacement(rotation, G4ThreeVector(), "mainBodyInternalPhysical", mainBodyInternalLogical, mainBodyPhysical, false, 0);
 
 	//<--------------------------------------------------------Cells and food construction----------------------------------------------->
 
@@ -425,9 +427,9 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 
 	G4LogicalVolume* foodLogical = new G4LogicalVolume(foodSolid, Water, "foodLogical");
 
-	G4VPhysicalVolume* cellsPhysical = new G4PVPlacement(rotation, G4ThreeVector(0, 0, 0) * mm, "cellsPhysical", cellsLogical, mainBodyInternalPhysical, false, 0);
+	G4VPhysicalVolume* cellsPhysical = new G4PVPlacement(rotation, G4ThreeVector(), "cellsPhysical", cellsLogical, mainBodyInternalPhysical, false, 0);
 
-	G4VPhysicalVolume* foodPhysical = new G4PVPlacement(rotation, G4ThreeVector(0, 0, 0) * mm, "foodPhysical", foodLogical, mainBodyInternalPhysical, false, 0);
+	G4VPhysicalVolume* foodPhysical = new G4PVPlacement(rotation, G4ThreeVector(), "foodPhysical", foodLogical, mainBodyInternalPhysical, false, 0);
 
 	//<--------------------------------------------------------------------------------------------------------------------------------->
 	//<--------------------------------------------------Applicator and phantom geometry------------------------------------------------>
@@ -437,20 +439,38 @@ G4VPhysicalVolume* SLCJDetectorConstruction::Construct() {
 		topPhantomThickness = 0.5 * cm,
 		bottomPhantomThickness = 11.5 * cm,
 		applicatorLenght = 60 * cm,
-		applicatorDiameter = 10 * cm,
+		applicatorDiameter = 12 * cm,
 		phantomSide = 12 * cm;
 
-	G4Tubs* applicatorSolid = new G4Tubs("applicatorSolid", 0.0, applicatorDiameter / 2, applicatorLenght / 2, 0.0, CLHEP::twopi);
+	//<-----------------------------------------------------------Applicator------------------------------------------------------------>
+
+	G4ThreeVector applicatorPosition = G4ThreeVector(0, 0, applicatorLenght / 2 + height + topPhantomThickness);
+
+	G4Tubs* applicatorSolid = new G4Tubs("applicatorSolid", applicatorDiameter / 2 - 1 * cm, applicatorDiameter / 2, applicatorLenght / 2, 0.0, CLHEP::twopi);
 
 	G4LogicalVolume* applicatorLogicalVolume = new G4LogicalVolume(applicatorSolid, PMMA, "applicatorLogicalVolume");
 
-	G4Box* topPhantomSolid = new G4Box("BottomPhantomSolid", phantomSide / 2, phantomSide / 2, topPhantomThickness / 2);
+	G4VPhysicalVolume* applicatorPhysicalVolume = new G4PVPlacement(nullptr, applicatorPosition + motherPlacementOffset, "applicatorPhysicalVolume", applicatorLogicalVolume, physimother_SLCJ, false, 0);
+
+	//<-----------------------------------------------------------Top phantom----------------------------------------------------------->
+
+	G4ThreeVector topPhantomPosition = G4ThreeVector(0, 0, height + topPhantomThickness / 2);
+
+	G4Box* topPhantomSolid = new G4Box("topPhantomSolid", phantomSide / 2, phantomSide / 2 - 1 * cm, topPhantomThickness / 2);
 
 	G4LogicalVolume* topPhantomLogical = new G4LogicalVolume(topPhantomSolid, RW3PhantomMaterial, "topPhantomLogical");
 
-	G4Box* bottomPhantomSolid = new G4Box("BottomPhantomSolid", phantomSide / 2, phantomSide / 2, bottomPhantomThickness / 2);
+	G4VPhysicalVolume* topPhantomPhysicalVolume = new G4PVPlacement(nullptr, topPhantomPosition - G4ThreeVector(0, 1, 0) * cm + motherPlacementOffset, "topPhantomPhysicalVolume", topPhantomLogical, physimother_SLCJ, false, 0);
+
+	//<-----------------------------------------------------------Bottom phantom-------------------------------------------------------->
+
+	G4ThreeVector bottomPhantomPosition = G4ThreeVector(0, 0, -bottomPhantomThickness / 2);
+
+	G4Box* bottomPhantomSolid = new G4Box("bottomPhantomSolid", phantomSide / 2, phantomSide / 2, bottomPhantomThickness / 2);
 
 	G4LogicalVolume* bottomPhantomLogical = new G4LogicalVolume(bottomPhantomSolid, RW3PhantomMaterial, "bottomPhantomLogical");
+
+	G4VPhysicalVolume* bottomPhantomPhysicalVolume = new G4PVPlacement(nullptr, bottomPhantomPosition + motherPlacementOffset, "bottomPhantomPhysicalVolume", bottomPhantomLogical, physimother_SLCJ, false, 0);
 
 	//********************************************************************************************************************/
 
