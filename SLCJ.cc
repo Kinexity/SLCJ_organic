@@ -146,14 +146,16 @@ int main(int argc, char** argv) {
 
 	checkpoint;
 #ifdef  WIN32
-	_putenv_s("G4ENSDFSTATEDATA", "C:\\Program Files (x86)\\Geant4 10.5\\data\\G4ENSDFSTATE2.2");
-	system("set G4ENSDFSTATEDATA");
-	_putenv_s("G4LEVELGAMMADATA", "C:\\Program Files(x86)\\Geant4 10.5\\data\\PhotonEvaporation5.3");
-	system("set G4LEVELGAMMADATA");
-	_putenv_s("G4RADIOACTIVEDATA", "C:\\Program Files (x86)\\Geant4 10.5\\data\\RadioactiveDecay5.3");
-	system("set G4RADIOACTIVEDATA");
-	_putenv_s("G4LEDATA", "C:\\Program Files (x86)\\Geant4 10.5\\data\\G4EMLOW7.7");
-	system("set G4LEDATA");
+	if (false) {
+		_putenv_s("G4ENSDFSTATEDATA", "C:\\Program Files (x86)\\Geant4 10.5\\data\\G4ENSDFSTATE2.2");
+		system("set G4ENSDFSTATEDATA");
+		_putenv_s("G4LEVELGAMMADATA", "C:\\Program Files(x86)\\Geant4 10.5\\data\\PhotonEvaporation5.3");
+		system("set G4LEVELGAMMADATA");
+		_putenv_s("G4RADIOACTIVEDATA", "C:\\Program Files (x86)\\Geant4 10.5\\data\\RadioactiveDecay5.3");
+		system("set G4RADIOACTIVEDATA");
+		_putenv_s("G4LEDATA", "C:\\Program Files (x86)\\Geant4 10.5\\data\\G4EMLOW7.7");
+		system("set G4LEDATA");
+	}
 #endif //  WIN32
 	// construct the default run manager
 	std::unique_ptr<G4RunManager> runManager = std::make_unique<G4RunManager>();
