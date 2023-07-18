@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
 		cutValue = 0.01 * mm,
 		energy = 9 * MeV;
 	std::string
-		physicsListName = "emlivermore";
+		physicsListName = "empenelope";
 	G4int
 		numberOfEvent = 1000000;
 
